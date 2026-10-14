@@ -1,0 +1,12 @@
+.toolbar {
+  display: grid;
+  grid-template-columns: 1fr 120px 200px;
+  gap: 8px;
+  align-items: center;
+}
+
+.search, .filter { height: 40px; min-width: 0; padding: 0 8px; font-size: 16px; }
+
+@media (max-width: 480px) {
+  .toolbar { grid-template-columns: 1fr 88px 104px; }
+}

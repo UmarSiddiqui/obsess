@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Settings</title>
+  <link rel="stylesheet" href="src/tokens.css">
+  <link rel="stylesheet" href="src/card.css">
+  <link rel="stylesheet" href="src/toggle.css">
+</head>
+<body>
+  <main class="card">
+    <h1>Settings</h1>
+    <div class="row">
+      <label id="notif-label" for="notif">Email notifications</label>
+      <button class="switch" id="notif" role="switch" aria-checked="false" aria-labelledby="notif-label"><span class="thumb"></span></button>
+    </div>
+    <div class="row">
+      <span>Weekly digest</span>
+      <span class="muted">Every Monday</span>
+    </div>
+  </main>
+  <script src="src/toggle.js"></script>
+</body>
+</html>
