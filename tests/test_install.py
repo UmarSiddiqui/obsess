@@ -11,7 +11,7 @@ import tempfile
 import unittest
 from unittest import mock
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[1] / "skills" / "obsess"
 SPEC = importlib.util.spec_from_file_location("obsess_install", ROOT / "scripts" / "install.py")
 assert SPEC is not None and SPEC.loader is not None
 INSTALL = importlib.util.module_from_spec(SPEC)

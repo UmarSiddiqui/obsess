@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="420" viewBox="0 0 1200 420" role="img" aria-labelledby="t d">
+  <title id="t">/obsess</title>
+  <desc id="d">One thing. Unreasonable attention to detail. Perfectionist mode for your coding agent.</desc>
+  <rect width="1200" height="420" rx="24" fill="#0E0E10"/>
+  <g fill="none" stroke="#1C1C20" stroke-width="1">
+    <path d="M0 105H1200M0 210H1200M0 315H1200M150 0V420M300 0V420M450 0V420M600 0V420M750 0V420M900 0V420M1050 0V420"/>
+  </g>
+  <g transform="translate(1010 210)" fill="none" stroke="#FF7A4D">
+    <circle r="110" stroke-width="1.5" opacity=".25"/>
+    <circle r="80" stroke-width="1.5" opacity=".45"/>
+    <circle r="40" stroke-width="2" opacity=".75"/>
+    <circle r="6" fill="#FF7A4D" stroke="none"/>
+    <path d="M-140 0H-52M52 0H140M0 -140V-52M0 52V140" stroke-width="2"/>
+  </g>
+  <text x="88" y="190" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="96" font-weight="700" fill="#F5F5F2">/obsess</text>
+  <text x="92" y="250" font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif" font-size="32" font-weight="600" fill="#F5F5F2">One thing. Unreasonable attention to detail.</text>
+  <text x="92" y="300" font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif" font-size="22" fill="#A0A0A0">Perfectionist mode for your coding agent. Works with 40+ agents.</text>
+</svg>

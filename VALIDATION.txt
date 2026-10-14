@@ -1,40 +1,43 @@
-/obsess v0.2.0 validation
+/obsess v0.3.0 validation
 Prepared: 15 October 2026 (Australia/Perth)
-Environment: Python 3.13.5 on Linux
+Environment: Python 3.13 on Linux; Node.js with the skills CLI via npx
 
 EXECUTED
-- Full standard-library unittest suite: 70 passed; 0 failures; 0 errors.
+- Full standard-library unittest suite: 73 passed; 0 failures; 0 errors.
   Command: python3 -m unittest discover -s tests -v
   Full transcript: test-results.txt
-- The 30 original scalar-helper tests remain byte-for-byte unchanged.
-- Added 28 installer tests, including simulated transactional failures.
-- Added 12 static package-consistency tests.
-- Parsed SKILL.md and the OpenCode wrapper frontmatter with a YAML parser.
-- Confirmed original scalar helper and scalar example fixtures are unchanged.
-- Tested a real v0.1-to-v0.2 upgrade in a disposable Claude-layout project.
-  All original archive files and an extra local note survived in the backup.
-- Checked native and fallback OpenCode installation layouts in disposable projects.
-- Ran the deliberately synthetic scalar demonstration: accept, with
-  evidence_authenticated=false. This isn't a real optimisation result.
-- Checked local Markdown links and JSON files through the test suite.
+- The scalar-helper tests are unchanged apart from pointing at the new
+  skills/obsess/ location.
+- New package tests: adapter safety (no model override, no shell
+  execution, one argument placeholder where used), manifest versions,
+  skill-name/folder match, compatibility length and skill-local links.
+- Parsed SKILL.md and every Markdown adapter's frontmatter with a YAML
+  parser, and the Gemini command with a TOML parser.
+- Ran the real skills CLI against this repository:
+  "npx skills add <repo> --list" found exactly one skill, obsess.
+  Installing with -a claude-code, codex, cursor, gemini-cli,
+  github-copilot, opencode, windsurf, cline, amp, goose, kiro-cli and roo
+  wrote .agents/skills/obsess/ plus each agent's link, in disposable
+  projects. The installed copy contains SKILL.md, refs, assets, scripts,
+  integrations and LICENSE.
+- Python installer CLI installed the skill folder into a disposable project
+  (covered by the test suite).
 
 NOT EXECUTED / NOT ESTABLISHED
-- Interactive Claude Code or OpenCode skill loading and behaviour.
+- Interactive sessions in any agent: skill loading, /obsess adapters and
+  behaviour were not exercised live.
+- Claude Code plugin marketplace and Gemini CLI extension installs from
+  GitHub (manifests are present and parsed; not installed live).
 - Model-driven UI improvement or an actual browser-based product trial.
 - The 20 host-behaviour scenarios in evals/cases.json (all marked not_run).
 - Matched-budget agent benchmarks or any free-model quality comparison.
-- Windows/macOS installer execution, despite using portable Python APIs.
+- Windows/macOS installer execution.
 - Independent enforcement of runtime budgets or cancellation.
-- Revalidation of the research claims retained from the supplied v0.1 memo.
 
 RELEASE SCOPE
-- Instructions and local support tooling were updated and repackaged.
-- No publication, account changes or installation into a user's live project.
-- No licence assignment. The supplied archive didn't contain a licence file.
+- Repository restructured to skills/obsess/, multi-agent distribution
+  added, README and launch kit rewritten. MIT licence added.
 - Package checks are not evidence of better model output or likely virality.
 
-ARCHIVE VERIFICATION
-- Release ZIP passed CRC validation and per-file SHA-256 checks.
-- The complete 70-test suite also passed from an extracted copy of the ZIP.
-- SHA256SUMS covers every packaged file other than itself.
-- No bytecode caches, symlinks or absolute archive paths are included.
+CHECKSUMS
+- SHA256SUMS covers every tracked file other than itself.

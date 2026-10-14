@@ -1,10 +1,11 @@
 ---
 name: obsess
 description: Use when the user explicitly asks to obsess over one thing. Polish a specific UI detail or improve a bounded piece of code through short, evidence-led attempts. Also supports read-only discovery inside a named scope. Don't activate for ordinary coding requests.
+license: MIT
 disable-model-invocation: true
-compatibility: Designed for Claude Code and OpenCode. Uses the current host's tools and model. Browser feedback is needed to verify rendered UI behaviour. Host-level compatibility and model-quality gains haven't been benchmarked.
+compatibility: Agent Skills format. Native layouts for Claude Code, Codex, Gemini CLI, OpenCode, Cursor, GitHub Copilot and other skills-capable agents, plus slash-command adapters and a portable rules file. Uses the current host's tools and model. Browser feedback is needed to verify rendered UI behaviour. Host-level behaviour and model-quality gains haven't been benchmarked.
 metadata:
-  version: "0.2.0"
+  version: "0.3.0"
   status: "prototype"
   opencode/slash: "true"
   opencode/autoinvoke: "false"

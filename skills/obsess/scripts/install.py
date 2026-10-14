@@ -51,7 +51,7 @@ def check_path(path: Path, *, leaf_directory: bool | None = None) -> None:
 
 def validate(plan: Plan) -> None:
     if not plan.source.is_dir() or not (plan.source / "SKILL.md").is_file():
-        raise InstallError("Source must be the extracted obsess directory containing SKILL.md")
+        raise InstallError("Source must be the obsess skill directory containing SKILL.md")
     for entry in plan.source.rglob("*"):
         if entry.is_symlink():
             raise InstallError(f"The package contains a symlink: {entry}")

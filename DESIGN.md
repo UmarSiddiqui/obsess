@@ -1,4 +1,4 @@
-# /obsess v0.2 design
+# /obsess design (v0.2 behaviour, v0.3 packaging)
 
 ## The product
 
@@ -35,7 +35,9 @@ The claim worth testing is whether this structure improves a narrowly scoped res
 
 ## Packaging and compatibility
 
-The main file keeps the existing Claude Code invocation control and adds OpenCode's documented slash/autoinvoke metadata. A legacy OpenCode command file is optional. The installer never configures model access or changes permissions.
+One skill folder, `skills/obsess/`, is the single source. Every route loads that same folder: the `npx skills` CLI, the Claude Code plugin marketplace, the Gemini CLI extension and the local Python installer. Thin `/obsess` adapters cover hosts without native skill commands, and a portable rule file covers agents that only read `AGENTS.md`-style files. Adapters point at the skill instead of copying it, so behaviour can't drift between agents.
+
+The main file keeps Claude Code's explicit-invocation control and OpenCode's slash/autoinvoke metadata. The portable rule is dormant until a message starts with `/obsess`. Nothing configures model access or changes permissions.
 
 Only package-level checks are reported for this build. Host-specific prompt loading and behavioural adherence need live trials. Instructional budgets are not independently enforced. Host policy has priority over everything in the package.
 

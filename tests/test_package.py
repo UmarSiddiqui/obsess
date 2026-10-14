@@ -8,28 +8,46 @@ import unittest
 from urllib.parse import unquote, urlsplit
 
 ROOT = Path(__file__).resolve().parents[1]
+SKILL = ROOT / "skills" / "obsess"
+ADAPTERS = {
+    "cursor/obsess.md": None,
+    "copilot/obsess.prompt.md": None,
+    "windsurf/obsess.md": None,
+    "cline/obsess.md": None,
+    "codex/obsess.md": "$ARGUMENTS",
+    "gemini/obsess.toml": "{{args}}",
+    "opencode/obsess.md": "$ARGUMENTS",
+}
+VERSION = "0.3.0"
 
 
 class PackageTests(unittest.TestCase):
     def test_required_files_present(self):
         for name in (
-            "SKILL.md", "README.md", "CHANGELOG.md", "EVALUATION.md", "DESIGN.md", "LAUNCH.md",
-            "refs/polish.md", "refs/recipes.md", "refs/protocol.md", "refs/recovery.md", "refs/host.md",
-            "assets/run.template.md", "assets/report.template.md", "assets/state.template.json",
-            "scripts/install.py", "scripts/gate.py", "evals/cases.json", "integrations/opencode/obsess.md",
+            "README.md", "INSTALL.md", "LICENSE", "CHANGELOG.md", "EVALUATION.md", "DESIGN.md", "LAUNCH.md",
+            "evals/cases.json", ".claude-plugin/plugin.json", ".claude-plugin/marketplace.json",
+            "gemini-extension.json", "docs/assets/social-preview.png",
         ):
             with self.subTest(name=name):
                 self.assertTrue((ROOT / name).is_file())
+        for name in (
+            "SKILL.md", "LICENSE", "refs/polish.md", "refs/recipes.md", "refs/protocol.md", "refs/recovery.md",
+            "refs/host.md", "assets/run.template.md", "assets/report.template.md", "assets/state.template.json",
+            "scripts/install.py", "scripts/gate.py", "integrations/rules/obsess.md",
+            *(f"integrations/{adapter}" for adapter in ADAPTERS),
+        ):
+            with self.subTest(name=name):
+                self.assertTrue((SKILL / name).is_file())
 
     def test_core_stays_compact(self):
-        self.assertLessEqual(len((ROOT / "SKILL.md").read_text(encoding="utf-8").split()), 1300)
+        self.assertLessEqual(len((SKILL / "SKILL.md").read_text(encoding="utf-8").split()), 1300)
 
     def test_frontmatter_has_explicit_invocation_and_native_slash(self):
-        text = (ROOT / "SKILL.md").read_text(encoding="utf-8")
+        text = (SKILL / "SKILL.md").read_text(encoding="utf-8")
         match = re.match(r"\A---\n(.*?)\n---\n", text, re.S)
         self.assertIsNotNone(match)
         header = match.group(1)
-        for field in ('name: obsess', 'disable-model-invocation: true', 'version: "0.2.0"',
+        for field in ('name: obsess', 'disable-model-invocation: true', f'version: "{VERSION}"',
                       'opencode/slash: "true"', 'opencode/autoinvoke: "false"'):
             self.assertIn(field, header)
         description = re.search(r"^description: (.+)$", header, re.M).group(1)
@@ -44,6 +62,8 @@ class PackageTests(unittest.TestCase):
                 path = (file.parent / unquote(target.path)).resolve()
                 with self.subTest(file=str(file.relative_to(ROOT)), href=href):
                     self.assertTrue(path.is_relative_to(ROOT.resolve()), "Local link escapes package")
+                    if file.resolve().is_relative_to(SKILL.resolve()):
+                        self.assertTrue(path.is_relative_to(SKILL.resolve()), "Installed skill link escapes its folder")
                     self.assertTrue(path.exists(), "Broken local link")
 
     def test_json_files_parse(self):
@@ -53,7 +73,7 @@ class PackageTests(unittest.TestCase):
                 self.assertIsInstance(data, dict)
 
     def test_new_state_does_not_invent_timing_or_choose_a_budget(self):
-        state = json.loads((ROOT / "assets/state.template.json").read_text())
+        state = json.loads((SKILL / "assets/state.template.json").read_text())
         self.assertEqual(state["schema_version"], 2)
         self.assertIsNone(state["elapsed_seconds"])
         self.assertFalse(state["elapsed_time_measured"])
@@ -62,7 +82,7 @@ class PackageTests(unittest.TestCase):
         self.assertEqual(state["working_tree_status"], "original")
 
     def test_attempt_template_starts_unverified(self):
-        attempt = json.loads((ROOT / "assets/experiment.template.json").read_text())
+        attempt = json.loads((SKILL / "assets/experiment.template.json").read_text())
         self.assertFalse(attempt["attempt_counted"])
         self.assertEqual(attempt["outcome"], "planned")
         self.assertEqual(attempt["verification_level"], "unverified")
@@ -83,16 +103,44 @@ class PackageTests(unittest.TestCase):
                 self.assertTrue(case["prompt"].startswith("/obsess"))
 
     def test_wrapper_does_not_force_a_model_or_execute_shell_text(self):
-        wrapper = (ROOT / "integrations/opencode/obsess.md").read_text()
-        self.assertEqual(wrapper.count("$ARGUMENTS"), 1)
-        self.assertNotIn("!`", wrapper)
-        header = wrapper.split("---", 2)[1]
-        self.assertNotRegex(header, r"(?m)^(model|agent|subtask):")
-        self.assertIn("exact name", wrapper)
+        for adapter, placeholder in ADAPTERS.items():
+            with self.subTest(adapter=adapter):
+                wrapper = (SKILL / "integrations" / adapter).read_text(encoding="utf-8")
+                self.assertIn("exact name", wrapper)
+                self.assertIn("obsess", wrapper)
+                self.assertNotIn("!`", wrapper)
+                self.assertNotIn("!{", wrapper)
+                self.assertNotRegex(wrapper, r"(?m)^(model|subtask):")
+                if placeholder:
+                    self.assertEqual(wrapper.count(placeholder), 1)
+        opencode = (SKILL / "integrations/opencode/obsess.md").read_text(encoding="utf-8")
+        self.assertNotRegex(opencode.split("---", 2)[1], r"(?m)^agent:")
+
+    def test_manifest_versions_match_skill(self):
+        plugin = json.loads((ROOT / ".claude-plugin/plugin.json").read_text(encoding="utf-8"))
+        market = json.loads((ROOT / ".claude-plugin/marketplace.json").read_text(encoding="utf-8"))
+        gemini = json.loads((ROOT / "gemini-extension.json").read_text(encoding="utf-8"))
+        self.assertEqual(plugin["name"], "obsess")
+        self.assertEqual(gemini["name"], "obsess")
+        self.assertEqual([p["name"] for p in market["plugins"]], ["obsess"])
+        self.assertEqual(market["plugins"][0]["source"], "./")
+        for version in (plugin["version"], market["plugins"][0]["version"], gemini["version"]):
+            self.assertEqual(version, VERSION)
+
+    def test_skill_name_matches_folder(self):
+        text = (SKILL / "SKILL.md").read_text(encoding="utf-8")
+        self.assertRegex(text, r"(?m)^name: obsess$")
+        compatibility = re.search(r"(?m)^compatibility: (.+)$", text).group(1)
+        self.assertLessEqual(len(compatibility), 500)
+
+    def test_portable_rule_stays_dormant_until_asked(self):
+        rule = (SKILL / "integrations/rules/obsess.md").read_text(encoding="utf-8")
+        self.assertIn("Never for ordinary coding requests", rule)
+        self.assertLessEqual(len(rule.split()), 700)
 
     def test_synthetic_receipts_stay_labelled(self):
         for name in ("baseline", "candidate"):
-            data = json.loads((ROOT / f"assets/{name}.example.json").read_text())
+            data = json.loads((SKILL / f"assets/{name}.example.json").read_text())
             self.assertIn("illustration-only", data["artifact_id"])
             self.assertIn("Synthetic", data["note"])
             self.assertEqual(data["evidence_refs"], ["ILLUSTRATION_ONLY_NO_REAL_MEASUREMENT"])
@@ -103,9 +151,11 @@ class PackageTests(unittest.TestCase):
         self.assertIn("not_run", text)
 
     def test_new_docs_do_not_use_em_dashes(self):
-        for name in ("SKILL.md", "README.md", "CHANGELOG.md", "DESIGN.md", "EVALUATION.md", "LAUNCH.md",
-                     "refs/polish.md", "refs/protocol.md", "refs/recipes.md", "refs/recovery.md", "refs/host.md"):
+        for name in ("README.md", "INSTALL.md", "CHANGELOG.md", "DESIGN.md", "EVALUATION.md", "LAUNCH.md"):
             self.assertNotIn("\u2014", (ROOT / name).read_text(encoding="utf-8"), name)
+        for name in ("SKILL.md", "refs/polish.md", "refs/protocol.md", "refs/recipes.md", "refs/recovery.md",
+                     "refs/host.md", "integrations/rules/obsess.md"):
+            self.assertNotIn("\u2014", (SKILL / name).read_text(encoding="utf-8"), name)
 
 
 if __name__ == "__main__":
