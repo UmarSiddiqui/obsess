@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- First live eval results: 50 headless Claude Code runs on Sonnet 5.5 and Haiku 5.5, summarised in the README under Tested results, with per-run tables and diffs in `evals/live/results/`.
+- Daily adoption tracker (`tools/adoption.py`, `.github/workflows/adoption.yml`): stars, forks, skills.sh installs and GitHub traffic, archived on a `metrics` branch. See `docs/tracking.md`.
+- skills.sh install badge in the README.
+
+### Fixed
+
+- The live eval grader no longer counts Python bytecode caches as out-of-scope edits, and trials no longer inherit caches from the fixtures.
+
 ## 0.3.0 - 15 October 2026
 
 ### Changed

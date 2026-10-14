@@ -1,0 +1,20 @@
+diff --git a/src/toolbar.css b/src/toolbar.css
+index 8d125fd..c576048 100644
+--- a/src/toolbar.css
++++ b/src/toolbar.css
+@@ -1,6 +1,6 @@
+ .toolbar {
+   display: grid;
+-  grid-template-columns: 1fr 120px 200px;
++  grid-template-columns: 1fr 120px auto;
+   gap: 8px;
+   align-items: center;
+ }
+@@ -8,5 +8,6 @@
+ .search, .filter { height: 40px; min-width: 0; padding: 0 8px; font-size: 16px; }
+ 
+ @media (max-width: 480px) {
+-  .toolbar { grid-template-columns: 1fr 88px 104px; }
++  .toolbar { grid-template-columns: minmax(0, 1fr) auto; }
++  .search { grid-column: 1 / -1; }
+ }

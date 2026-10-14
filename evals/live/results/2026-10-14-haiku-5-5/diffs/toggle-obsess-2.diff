@@ -1,0 +1,38 @@
+diff --git a/src/toggle.css b/src/toggle.css
+index 87a5259..0c8b566 100644
+--- a/src/toggle.css
++++ b/src/toggle.css
+@@ -7,11 +7,12 @@
+   border-radius: 12px;
+   background: var(--switch-off);
+   cursor: pointer;
++  /* Declared on the base state so both directions animate */
++  transition: background-color 0.25s cubic-bezier(0.2, 0, 0, 1);
+ }
+ 
+ .switch.on {
+   background: var(--switch-on);
+-  transition: background 0.25s;
+ }
+ 
+ .thumb {
+@@ -23,9 +24,17 @@
+   border-radius: 50%;
+   background: #fff;
+   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
++  /* transform runs on the compositor; animating left triggers layout */
++  transition: transform 0.25s cubic-bezier(0.2, 0, 0, 1);
+ }
+ 
+ .switch.on .thumb {
+-  left: 22px;
+-  transition: left 0.25s ease;
++  transform: translateX(20px);
++}
++
++/* Drop the sliding motion only; the colour change is not spatial movement */
++@media (prefers-reduced-motion: reduce) {
++  .thumb {
++    transition: none;
++  }
+ }
