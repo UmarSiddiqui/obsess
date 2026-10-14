@@ -19,9 +19,17 @@ The README is rewritten for discovery: what the skill does in one line, install 
 - MIT licence, README banner and a social preview image.
 - Tests for adapters, manifest versions and skill-local links.
 
+### Live evaluation
+
+Added `evals/live/`: headless Claude Code runs on buggy fixtures with machine graders. 44 runs on Sonnet 5.5 and Haiku 5.5. /obsess fixed 12/12 with no scope violations and held 7/7 guard rails. A plain request also fixed 12/12, so no quality gain is claimed. See `evals/live/RESULTS.md`.
+
+### Fixed
+
+Found by the live eval: an invalid or unlimited `--iterations` value was rejected but the run continued on the default budget. Invalid, unknown or conflicting flags now stop the run before any edit.
+
 ### Not claimed
 
-Live trials in each listed agent and a matched-budget benchmark still haven't been run. Layouts follow each host's published documentation.
+Live trials in agents other than Claude Code, and harder tasks that could show a quality gain, haven't been run. Layouts follow each host's published documentation.
 
 
 ## 0.2.0 - 15 October 2026
