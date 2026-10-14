@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.3.0 - 15 October 2026
+
+### Changed
+
+The repository now uses the standard `skills/obsess/` layout, so one folder installs into any Agent Skills host. The skill, references, templates, scripts and adapters moved there; tests, evaluations and project docs stay at the root. The Python installer now copies only the skill folder.
+
+The README is rewritten for discovery: what the skill does in one line, install in one command, an illustrative before/after and an FAQ. Positioning now names every supported agent.
+
+### Added
+
+- `npx skills add UmarSiddiqui/obsess` support for 40+ agents through the skills CLI.
+- Claude Code plugin marketplace manifests (`.claude-plugin/`).
+- Gemini CLI extension manifest (`gemini-extension.json`).
+- `/obsess` adapters for Cursor, GitHub Copilot, Windsurf, Cline, Gemini CLI and Codex, alongside the existing OpenCode wrapper.
+- A portable, dormant-until-asked rule file for `AGENTS.md` and other rules files.
+- INSTALL.md with per-agent install, update and uninstall steps.
+- MIT licence, README banner and a social preview image.
+- Tests for adapters, manifest versions and skill-local links.
+
+### Not claimed
+
+Live trials in each listed agent and a matched-budget benchmark still haven't been run. Layouts follow each host's published documentation.
+
+
 ## 0.2.0 - 15 October 2026
 
 ### Changed

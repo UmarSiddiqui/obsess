@@ -1,0 +1,10 @@
+{
+  "name": "obsess",
+  "version": "0.3.0",
+  "description": "Perfectionist mode for your coding agent. Point it at one detail; it checks its own work, keeps the best-supported version and stops on purpose.",
+  "author": { "name": "Umar Siddiqui", "url": "https://github.com/UmarSiddiqui" },
+  "homepage": "https://github.com/UmarSiddiqui/obsess",
+  "repository": "https://github.com/UmarSiddiqui/obsess",
+  "license": "MIT",
+  "keywords": ["skill", "ui-polish", "perfectionist", "attention-to-detail", "frontend", "code-quality", "optimization"]
+}

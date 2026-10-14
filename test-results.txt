@@ -62,14 +62,17 @@ test_evaluation_report_does_not_claim_host_execution (test_package.PackageTests.
 test_frontmatter_has_explicit_invocation_and_native_slash (test_package.PackageTests.test_frontmatter_has_explicit_invocation_and_native_slash) ... ok
 test_json_files_parse (test_package.PackageTests.test_json_files_parse) ... ok
 test_local_markdown_links_resolve (test_package.PackageTests.test_local_markdown_links_resolve) ... ok
+test_manifest_versions_match_skill (test_package.PackageTests.test_manifest_versions_match_skill) ... ok
 test_manual_scenarios_are_explicitly_unexecuted (test_package.PackageTests.test_manual_scenarios_are_explicitly_unexecuted) ... ok
 test_new_docs_do_not_use_em_dashes (test_package.PackageTests.test_new_docs_do_not_use_em_dashes) ... ok
 test_new_state_does_not_invent_timing_or_choose_a_budget (test_package.PackageTests.test_new_state_does_not_invent_timing_or_choose_a_budget) ... ok
+test_portable_rule_stays_dormant_until_asked (test_package.PackageTests.test_portable_rule_stays_dormant_until_asked) ... ok
 test_required_files_present (test_package.PackageTests.test_required_files_present) ... ok
+test_skill_name_matches_folder (test_package.PackageTests.test_skill_name_matches_folder) ... ok
 test_synthetic_receipts_stay_labelled (test_package.PackageTests.test_synthetic_receipts_stay_labelled) ... ok
 test_wrapper_does_not_force_a_model_or_execute_shell_text (test_package.PackageTests.test_wrapper_does_not_force_a_model_or_execute_shell_text) ... ok
 
 ----------------------------------------------------------------------
-Ran 70 tests in 2.763s
+Ran 73 tests in 0.334s
 
 OK

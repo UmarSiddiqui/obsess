@@ -12,6 +12,8 @@ The scenarios in [evals/cases.json](evals/cases.json) cover invocation and budge
 
 For each advertised host, install in a disposable project and start a session. Confirm that `/obsess` loads the intended version and that a normal unrelated request doesn't activate it. Use native OpenCode metadata first; test the fallback wrapper separately, with only one slash registration active.
 
+Priority order for live checks: Claude Code (plugin and `npx skills`), Codex (`$obsess`), Cursor (skill plus `/obsess` command), Gemini CLI (extension plus command), GitHub Copilot in VS Code (prompt file), OpenCode, Windsurf and Cline. For each, record the host version, the install route and whether the adapter resolved the installed skill. Test the portable rule in one agent that only reads `AGENTS.md` and confirm it stays dormant for ordinary requests.
+
 Exercise a natural-language request and inspect whether supporting files are loaded only as needed. Confirm that the command uses the selected model. Record the host version and actual tool availability. Repeat the installer upgrade test with a modified old installation and verify its backup.
 
 ## Fair comparisons

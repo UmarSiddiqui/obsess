@@ -2,9 +2,9 @@
 
 ## What's included
 
-v0.2 is a local skill package. The host follows its instructions in an active session. The installer copies files; it doesn't launch a model or change account settings. The scalar helper compares receipts; it doesn't perform the work described by the skill.
+This is a local skill package in the open Agent Skills format. The host follows its instructions in an active session. The installers copy files; they don't launch a model or change account settings. The scalar helper compares receipts; it doesn't perform the work described by the skill.
 
-The documented integration targets are Claude Code and OpenCode. This build has package-level checks, not interactive compatibility certification. Other file-reading agents may adapt the workflow, but no universal slash-command compatibility is claimed.
+Distribution routes: the `npx skills` CLI for skills-capable agents, a Claude Code plugin marketplace, a Gemini CLI extension, the local Python installer for Claude Code and OpenCode, `/obsess` adapters in `integrations/` and a portable rules file for agents without skills. The repository's INSTALL.md lists each command. This build has package-level checks, not interactive certification in every host.
 
 ## Native installation
 
@@ -12,8 +12,24 @@ The documented integration targets are Claude Code and OpenCode. This build has 
 |---|---|---|
 | Claude Code | `.claude/skills/obsess/` | `~/.claude/skills/obsess/` |
 | OpenCode | `.opencode/skills/obsess/` | `~/.config/opencode/skills/obsess/` |
+| Shared `.agents` layout (Codex and others) | `.agents/skills/obsess/` | `~/.agents/skills/obsess/` |
 
-The package keeps Claude Code's explicit-invocation frontmatter. OpenCode metadata enables a native slash command while excluding automatic selection. OpenCode also searches Claude-compatible and `.agents/skills/` paths. Avoid multiple copies with the same name. Sources: [Claude Code](https://code.claude.com/docs/en/skills) and [OpenCode skills](https://opencode.ai/docs/skills/), checked 15 October 2026.
+## Slash-command adapters
+
+Hosts without native skill commands get a thin adapter that loads the installed skill by name, or reads it from `.agents/skills/obsess/` or `.claude/skills/obsess/` in the project or home directory. Adapters never select a model or run shell text.
+
+| Host | Adapter | Destination | Invoke |
+|---|---|---|---|
+| Cursor | `integrations/cursor/obsess.md` | `.cursor/commands/obsess.md` | `/obsess` |
+| GitHub Copilot (VS Code) | `integrations/copilot/obsess.prompt.md` | `.github/prompts/obsess.prompt.md` | `/obsess` |
+| Windsurf | `integrations/windsurf/obsess.md` | `.windsurf/workflows/obsess.md` | `/obsess` |
+| Cline | `integrations/cline/obsess.md` | `.clinerules/workflows/obsess.md` | `/obsess.md` |
+| Gemini CLI | `integrations/gemini/obsess.toml` | `.gemini/commands/obsess.toml` | `/obsess` |
+| Codex (optional) | `integrations/codex/obsess.md` | `~/.codex/prompts/obsess.md` | `/prompts:obsess` |
+
+`integrations/rules/obsess.md` is a compact, dormant-until-asked protocol for `AGENTS.md` and other rules files. Prefer the full skill where the host supports skills.
+
+The package keeps Claude Code's explicit-invocation frontmatter. OpenCode metadata enables a native slash command while excluding automatic selection. OpenCode also searches Claude-compatible and `.agents/skills/` paths. Avoid multiple copies with the same name. Sources: [Claude Code](https://code.claude.com/docs/en/skills), [OpenCode skills](https://opencode.ai/docs/skills/) and the [Agent Skills specification](https://agentskills.io/specification), checked 15 October 2026.
 
 The installer requires an explicit project path or `--global`. It refuses an unapproved overwrite and rejects symlinked installation paths. `--upgrade` retains prior files under `obsess-backups/` inside the selected host's configuration directory, outside its skill-discovery directory. `--dry-run` performs validation without creating files. Installation isn't a sandbox or a substitute for reviewing the package.
 
@@ -24,7 +40,7 @@ It detects common competing locations at the same project/user level. Ancestor r
 On an older build without native skill slash registration, install with `--legacy-command`:
 
 ```bash
-python3 obsess/scripts/install.py --host opencode --project /path/to/project --legacy-command
+python3 skills/obsess/scripts/install.py --host opencode --project /path/to/project --legacy-command
 ```
 
 The wrapper goes into `.opencode/commands/obsess.md`, or `~/.config/opencode/commands/obsess.md` globally. It loads the skill by exact name and forwards the user's request with `$ARGUMENTS`. The installed skill's native slash flag is set to `"false"` so there is only one command registration. No model override or subagent is configured. This follows [OpenCode's command documentation](https://opencode.ai/docs/commands/).
