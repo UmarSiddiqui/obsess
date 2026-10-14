@@ -144,7 +144,7 @@ def run_agent(work: Path, prompt: str, model: str, timeout: int) -> dict:
         "timed_out": timed_out,
         "tool_calls": len(tools),
         "browser_checks": sum(1 for t in tools if t["name"] == "Bash" and any(k in t["input"] for k in ("playwright", "chromium", "screenshot"))),
-        "skill_loaded": any(t["name"] == "Skill" for t in tools) or "Unreasonable attention to detail" in stdout,
+        "skill_available": any(e.get("type") == "system" and "obsess" in (e.get("skills") or []) for e in events),
         "events": events,
     }
 
@@ -312,6 +312,7 @@ def main() -> int:
     ap.add_argument("--conditions", default="baseline,review,obsess")
     ap.add_argument("--model", default="claude-sonnet-5-5")
     ap.add_argument("--timeout", type=int, default=1800)
+    ap.add_argument("--obsess-suffix", default="", help='Appended to /obsess prompts, e.g. " --lite"')
     args = ap.parse_args()
     only = set(filter(None, args.only.split(",")))
     jobs = []
@@ -319,7 +320,7 @@ def main() -> int:
         if only and task not in only:
             continue
         for cond in args.conditions.split(","):
-            prompt = spec["obsess"] if cond == "obsess" else spec["request"][0].upper() + spec["request"][1:] + "."
+            prompt = spec["obsess"] + args.obsess_suffix if cond == "obsess" else spec["request"][0].upper() + spec["request"][1:] + "."
             if cond == "review":
                 prompt += REVIEW_SUFFIX
             for rep in range(1, args.reps + 1):

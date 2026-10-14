@@ -84,3 +84,37 @@ print("|---|---|---|")
 for r in gates:
     checks = ", ".join(f"{k} {'✅' if v else '❌'}" for k, v in r["grade"]["checks"].items())
     print(f"| `{r['gate']}` | {'✅' if r['grade']['pass'] else '❌'} | {checks} |")
+
+from pathlib import Path
+import re as _re
+
+TRANSCRIPTS = Path(sys.argv[1]).parent / "transcripts"
+MEASURE = _re.compile(r"playwright|chromium|screenshot|bench\.py|timeit|perf_counter")
+
+
+def measured(run_id):
+    path = TRANSCRIPTS / f"{run_id}.jsonl"
+    if not path.exists():
+        return None
+    for line in path.open():
+        e = json.loads(line)
+        if e.get("type") != "assistant":
+            continue
+        for block in e.get("message", {}).get("content", []):
+            if block.get("type") == "tool_use" and block["name"] == "Bash" and MEASURE.search(json.dumps(block.get("input"))):
+                return True
+    return False
+
+
+print("\n## Did the agent check its own work?\n")
+print("From the transcripts: a run counts as measured if it drove Playwright/Chromium, took screenshots, or ran a benchmark/timer.\n")
+print("| Task | Condition | Runs that measured | Mean tool calls | Mean report length (words) |")
+print("|---|---|---|---|---|")
+for task in ("toggle", "button", "importer"):
+    for c in CONDS:
+        rs = by[(task, c)]
+        if not rs:
+            continue
+        opened = sum(bool(measured(r["id"])) for r in rs)
+        print(f"| {task} | {LABEL[c]} | {opened}/{len(rs)} | {mean([r['agent']['tool_calls'] for r in rs]):.1f} | "
+              f"{mean([len(r['agent']['final_text'].split()) for r in rs]):.0f} |")
