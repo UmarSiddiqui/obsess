@@ -10,7 +10,7 @@ const path = require('path');
 const [dir, outDir, threePath] = process.argv.slice(2);
 fs.mkdirSync(outDir, { recursive: true });
 const SAVE_KEY = 'momo-tycoon-save-v1';
-const MIN_PITCH = 45; // degrees below the horizon: steep enough to read as top-down
+const MIN_PITCH = Number(process.env.MIN_PITCH || 45); // degrees below the horizon: 45 reads as top-down, 80+ as fully overhead
 const MIN_COVER = 0.95; // share of the play-floor sample points that must be visible and uncovered
 
 // Play-floor rectangles from the base game's layout (counter at the origin, queue in front).
