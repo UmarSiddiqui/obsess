@@ -1,12 +1,12 @@
 # Does /obsess actually help?
 
-This is the host/model evaluation plan, not a results report. First live results (Claude Code only, with Sonnet 5.5 and Haiku 5.5) are in the README under Tested results and in [evals/live/results/](evals/live/results/). The scripted tests in `tests/` validate local tooling and package consistency. They don't demonstrate better agent output or prove compliance with the skill's instructions.
+This is a host/model evaluation plan, not a results report. The first live results, for Claude Code on Sonnet 5.5 and Haiku 5.5, are in [evals/live/RESULTS.md](evals/live/RESULTS.md). The scripted tests in `tests/` validate local tooling and package consistency. They don't demonstrate better agent output or prove compliance with the skill's instructions.
 
 ## What to test
 
 Start with two representative product tasks: a toggle with an observable motion problem and a button that clips in a real responsive container. Add a scalar optimisation task to check that the original workflow still works. Run them on an actual repository with a reproducible starting state.
 
-The scenarios in [evals/cases.json](evals/cases.json) cover invocation and budget handling, plus failure cases. They include missing browser feedback and pre-existing user edits. The live harness in [evals/live/](evals/live/) runs the guard-rail cases and three graded tasks with real agent sessions; results are in [evals/live/results/](evals/live/results/). Cases it doesn't cover are still `not_run`. A package test that validates their schema isn't a successful agent trial.
+The scenarios in [evals/cases.json](evals/cases.json) cover invocation and budget handling, plus failure cases. They include missing browser feedback and pre-existing user edits. Every case is marked `not_run` in this file. Seven of them were adapted to the live fixtures and run on Claude Code; see the live results. A package test that validates their schema isn't a successful agent trial.
 
 ## Integration smoke checks
 

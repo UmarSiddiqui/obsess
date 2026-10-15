@@ -1,0 +1,7 @@
+Change this momo stall game to a top-down view like the classic restaurant and pizza tycoon games: the camera looks down from high above (overhead or a steep isometric 3/4 angle) so the player sees the whole business at once: the street, the queue of customers, the counter, the steamers and kitchen, and the staff moving around. As the business expands to a shop and a restaurant, the view should still show the whole floor plan.
+
+Keep it 3D with Three.js and keep the Nepali look, but make it read clearly from above: rooftops, prayer flags and the street layout should look good from overhead, and customers, steamers and orders must stay easy to see and tap. The UI panels must not cover the play area. It must work with a mouse on desktop and touch on a phone (portrait and landscape).
+
+Keep all existing gameplay, saves and features working. Work autonomously: don't ask questions, make reasonable choices and finish.
+
+Local tooling: Chromium is at /opt/pw-browsers/chromium and Playwright is installed globally (require("playwright") works). You can serve the folder with `python3 -m http.server`. The jsDelivr CDN may be blocked in this sandbox; a local copy of three@0.160.0 is at <scratch>/momo/three/node_modules/three if you need to route it for testing. Keep the shipped code loading Three.js from the CDN.

@@ -1,0 +1,57 @@
+{
+  "views": {
+    "desktop": {
+      "pitch": 2.7,
+      "cover": 0.965,
+      "camType": "PerspectiveCamera",
+      "blockers": 2
+    },
+    "restaurant-desktop": {
+      "pitch": 2.7,
+      "cover": 0.804,
+      "camType": "PerspectiveCamera",
+      "blockers": 2
+    },
+    "restaurant-phone": {
+      "pitch": 13.1,
+      "cover": 0.497,
+      "camType": "PerspectiveCamera",
+      "blockers": 2
+    },
+    "phone-portrait": {
+      "pitch": 13.1,
+      "cover": 0.734,
+      "camType": "PerspectiveCamera",
+      "blockers": 2
+    },
+    "phone-landscape": {
+      "pitch": 2.7,
+      "cover": 0.923,
+      "camType": "PerspectiveCamera",
+      "blockers": 2
+    }
+  },
+  "play": {
+    "loaded": true,
+    "collected": true,
+    "served": true,
+    "moneyBefore": 500,
+    "moneyAfter": 579
+  },
+  "save": {
+    "continueShown": true,
+    "moneyBefore": 583,
+    "moneyAfter": 583,
+    "ok": true
+  },
+  "errors": [],
+  "checks": {
+    "top_down_everywhere": false,
+    "floor_visible_and_uncovered": false,
+    "serve_loop_works": true,
+    "save_survives_reload": true,
+    "no_errors": true
+  },
+  "score": 3,
+  "pass": false
+}

@@ -1,0 +1,62 @@
+diff --git a/src/importer.py b/src/importer.py
+index 476fd0b..3275c07 100644
+--- a/src/importer.py
++++ b/src/importer.py
+@@ -2,12 +2,13 @@
+ import csv
+ import io
+ from datetime import datetime
++from functools import lru_cache
+ 
+ DATE_FORMATS = ["%Y-%m-%d", "%d/%m/%Y", "%b %d %Y", "%Y%m%d"]
+ 
+ 
+-def parse_date(value):
+-    value = value.strip()
++@lru_cache(maxsize=None)
++def _parse_stripped(value):
+     for fmt in DATE_FORMATS:
+         try:
+             return datetime.strptime(value, fmt).date().isoformat()
+@@ -16,6 +17,10 @@ def parse_date(value):
+     return None
+ 
+ 
++def parse_date(value):
++    return _parse_stripped(value.strip())
++
++
+ def normalise_email(value):
+     return value.strip().lower()
+ 
+@@ -23,22 +28,22 @@ def normalise_email(value):
+ def import_contacts(text):
+     """Return contacts in first-seen order, one per email, with ISO dates."""
+     rows = list(csv.DictReader(io.StringIO(text)))
+-    seen = []
++    by_email = {}
+     contacts = []
+     for row in rows:
+         email = normalise_email(row["email"])
+         if not email or "@" not in email:
+             continue
+-        if email in seen:
+-            for contact in contacts:
+-                if contact["email"] == email:
+-                    contact["tags"] = sorted(set(contact["tags"] + [t.strip() for t in row["tags"].split(";") if t.strip()]))
++        contact = by_email.get(email)
++        if contact is not None:
++            contact["tags"] = sorted(set(contact["tags"] + [t.strip() for t in row["tags"].split(";") if t.strip()]))
+             continue
+-        seen.append(email)
+-        contacts.append({
++        contact = {
+             "email": email,
+             "name": " ".join(row["name"].split()).title(),
+             "joined": parse_date(row["joined"]),
+             "tags": sorted(set(t.strip() for t in row["tags"].split(";") if t.strip())),
+-        })
++        }
++        by_email[email] = contact
++        contacts.append(contact)
+     return contacts

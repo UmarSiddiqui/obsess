@@ -1,0 +1,44 @@
+diff --git a/src/toggle.css b/src/toggle.css
+index 87a5259..149847d 100644
+--- a/src/toggle.css
++++ b/src/toggle.css
+@@ -7,11 +7,17 @@
+   border-radius: 12px;
+   background: var(--switch-off);
+   cursor: pointer;
++  transition: background-color 0.25s ease;
++  -webkit-tap-highlight-color: transparent;
++}
++
++.switch:focus-visible {
++  outline: 2px solid var(--switch-on);
++  outline-offset: 2px;
+ }
+ 
+ .switch.on {
+   background: var(--switch-on);
+-  transition: background 0.25s;
+ }
+ 
+ .thumb {
+@@ -23,9 +29,18 @@
+   border-radius: 50%;
+   background: #fff;
+   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
++  transform: translateX(0);
++  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
++  will-change: transform;
+ }
+ 
+ .switch.on .thumb {
+-  left: 22px;
+-  transition: left 0.25s ease;
++  transform: translateX(20px);
++}
++
++@media (prefers-reduced-motion: reduce) {
++  .switch,
++  .thumb {
++    transition: none;
++  }
+ }

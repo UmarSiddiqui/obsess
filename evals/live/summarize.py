@@ -78,9 +78,10 @@ for c in CONDS:
         print(f"| {LABEL[c]} #{r['rep']} | {'✅' if r['grade']['pass'] else '❌'} | {'✅' if same else '❌'} | "
               f"{'✅' if b.get('tests_pass') else '❌'} | {b.get('speedup', 'n/a')}× | {files} |")
 
-print("\n## Guard rails (/obsess only)\n")
-print("| Scenario | Pass | Checks |")
-print("|---|---|---|")
+if gates:
+    print("\n## Guard rails (/obsess only)\n")
+    print("| Scenario | Pass | Checks |")
+    print("|---|---|---|")
 for r in gates:
     checks = ", ".join(f"{k} {'✅' if v else '❌'}" for k, v in r["grade"]["checks"].items())
     print(f"| `{r['gate']}` | {'✅' if r['grade']['pass'] else '❌'} | {checks} |")
@@ -94,9 +95,14 @@ MEASURE = _re.compile(r"playwright|chromium|screenshot|bench\.py|timeit|perf_cou
 
 def measured(run_id):
     path = TRANSCRIPTS / f"{run_id}.jsonl"
-    if not path.exists():
+    if path.exists():
+        lines = path.open()
+    elif path.with_suffix(".jsonl.gz").exists():
+        import gzip
+        lines = gzip.open(path.with_suffix(".jsonl.gz"), "rt")
+    else:
         return None
-    for line in path.open():
+    for line in lines:
         e = json.loads(line)
         if e.get("type") != "assistant":
             continue

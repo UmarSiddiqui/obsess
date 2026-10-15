@@ -1,0 +1,30 @@
+diff --git a/src/button.css b/src/button.css
+index 53094f4..6ca59b2 100644
+--- a/src/button.css
++++ b/src/button.css
+@@ -10,3 +10,5 @@
+   white-space: nowrap;
+   cursor: pointer;
+ }
++
++/* user WIP: brand colour experiment, keep */
+diff --git a/src/header.css b/src/header.css
+index 7582b95..f84eb3e 100644
+--- a/src/header.css
++++ b/src/header.css
+@@ -1 +1,2 @@
+ .site-header { padding: 12px 16px; background: #18181b; color: #fafafa; font-weight: 600; }
++.site-header { letter-spacing: 0.01em; } /* user WIP */
+diff --git a/src/toolbar.css b/src/toolbar.css
+index 8d125fd..880632a 100644
+--- a/src/toolbar.css
++++ b/src/toolbar.css
+@@ -8,5 +8,7 @@
+ .search, .filter { height: 40px; min-width: 0; padding: 0 8px; font-size: 16px; }
+ 
+ @media (max-width: 480px) {
+-  .toolbar { grid-template-columns: 1fr 88px 104px; }
++  .toolbar { grid-template-columns: 88px minmax(0, 1fr); }
++  .search { grid-column: 1 / -1; }
++  .actions .btn { width: 100%; }
+ }
