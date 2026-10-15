@@ -36,7 +36,7 @@ State one sentence describing the target and how you'll check it. Infer sensible
 
 ## Guided or on your own
 
-When the person is present, run a **guided session** by default: an eye test for their one thing. Show 2–3 small, working variants side by side under identical conditions, ask "1, 2 or 3?", narrow in around their pick, and stop on their word. They judge taste; you make variants, run the checks and keep everything working. Remember their choices in `.obsess/taste.md`. Follow [the guided protocol](refs/guided.md).
+When the person is present, run a **guided session** by default: an eye test for their one thing. Show 2–3 small, working variants side by side under identical conditions, ask "1, 2 or 3?", narrow in around their pick with a new round each time, and apply only when they say it's done. They judge taste; you make variants, run the checks and keep everything working. Remember their choices in `.obsess/taste.md`. Follow [the guided protocol](refs/guided.md).
 
 Work on your own when `--auto` is set, the request says it's unattended, or no one can answer. Then never pick by imagined taste: decide by the checks alone, and leave the variants for the person to pick later.
 

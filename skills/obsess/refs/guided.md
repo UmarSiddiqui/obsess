@@ -28,20 +28,22 @@ Describe each variant in one plain line ("2: 220ms ease-out, no overshoot"). Don
 
 ## 4. Narrow in
 
+Don't touch the real files yet. A pick with a tweak ("2, but softer", "between 1 and 2") always starts a new round of variants; never jump to one guess and apply it.
+
 Keep the pick as the new favourite. The next round brackets it more tightly: if 2 won at 220ms, try 180 and 260. If the person says "between 1 and 2", make the midpoint. If they name a problem, make variants that fix it in different ways.
 
 Run the normal checks on every variant before showing it: correctness, accessibility, reduced motion, other consumers of shared code. Never show a variant that breaks something, and say so if a direction was dropped for that reason.
 
 ## 5. Stop on their word
 
-Stop when the person says it's done, picks the same variant twice in a row, or the attempt budget runs out. Apply the final pick to the real files, recheck it and report as usual. Include the pick history in the report, for example `0 → 2 → 2b → done`.
+Apply to the real files only when the person says it's done, picks the same variant twice in a row, or the attempt budget runs out. Apply the final pick to the real files, recheck it and report as usual. Include the pick history in the report, for example `0 → 2 → 2b → done`.
 
 ## 6. Remember taste
 
-Append two or three short lines to `.obsess/taste.md` with what was chosen and what was rejected, in plain words with real values:
+Append two or three short lines to `.obsess/taste.md` with what the person picked and passed over, in plain words with real values. Record only what they did or said; don't invent reasons for a choice.
 
 ```text
-2026-10-15 toggle motion: chose 200ms cubic-bezier(.2,.8,.2,1); rejected overshoot and anything over 300ms.
+2026-10-15 toggle motion: picked 200ms ease-out over 160ms and 250ms; asked for "a touch softer" than 160ms.
 ```
 
 Tell the person the file exists and that they can edit or delete it. Don't commit it unless they ask. Don't record anything personal.
