@@ -1,0 +1,907 @@
+diff --git a/README.md b/README.md
+index 32f045f..b5d6f42 100644
+--- a/README.md
++++ b/README.md
+@@ -4,9 +4,11 @@ A browser tycoon game about running a momo stall on a Kathmandu street. Cook mom
+ serve hungry customers, spend rupees on upgrades, hire staff, and grow from a street
+ stall into a busy Newari restaurant.
+ 
+-Everything is drawn in code with Three.js: Newari brick and carved windows, a pagoda
+-roof, a stupa with Buddha eyes, prayer flags, marigold garlands, brass lanterns, steam,
+-and a snowy Himalayan skyline.
++Everything is drawn in code with Three.js and seen from a steep, overhead 3/4 camera, the
++way Restaurant and Pizza tycoon games are played: the lane and queue, the steamers and
++kitchen, the staff, and the rooftops around the stall are all visible at once. Newari
++rooftops and carved windows, a pagoda roof, a stupa with Buddha eyes, prayer flags strung
++between the rooftops, marigold garlands, brass lanterns and steam.
+ 
+ ## Run it
+ 
+@@ -25,12 +27,20 @@ import map in `index.html`. Nothing else is fetched from the network.
+ - **Steamers:** tap a steamer on the stall to load it with the item marked "Cooking" in the
+   Cook tab. Tap it again when it is ready to collect the momos. The badge above each
+   steamer shows the same state.
+-- **Customers:** tap a customer or their order bubble to serve them, once the tray holds
+-  what they ordered. Customers who wait too long walk off and cost reputation.
++- **Customers:** tap a customer (or their order label, or the green ring under them) to serve
++  them, once the tray holds what they ordered. Customers who wait too long walk off and cost
++  reputation.
+ - **Panels:** Cook (steamers and menu), Upgrade (steamer speed, bigger baskets, recipe, extra
+   baskets, decor), Staff (chefs and servers), Expand (stage requirements and achievements).
+-  On desktop the panel sits on the right. On phones it is a bottom sheet.
+-- **Camera:** drag the scene to turn the view slightly.
++  On desktop and landscape phones the panel sits on the right. On phones in portrait it is a
++  bottom sheet. Tap the open tab to fold the panel down to its tab strip and give the stall
++  more room; tap it again to open the panel.
++- **Camera:** drag (mouse or touch) to turn the view around the stall. The camera always pulls
++  back far enough to show the whole floor plan in the space the HUD and panel leave free, so
++  the stall, the queue and the steamers stay visible as the business grows.
++- **Layout:** the HUD sits top left (across the top on portrait phones). Toasts appear under the
++  HUD on desktop (near the top on phones). Order labels hang below each customer and steamer
++  badges sit above each steamer.
+ 
+ ## Progression
+ 
+@@ -57,6 +67,6 @@ title screen, and "Continue" resumes the saved game. Sound on/off is remembered
+ | `js/main.js` | Wiring: input, layout, title screen and the frame loop |
+ | `js/sim.js` | Pure game logic: economy, cooking, customers, staff, paydays, saves |
+ | `js/data.js` | Menu, upgrades, decor, staff, stages and achievements (tune balance here) |
+-| `js/world.js` | Three.js scene: architecture, Himalayan backdrop, steamers, steam, flags, people |
++| `js/world.js` | Three.js scene: top-down camera framing, lane, stall, rooftops, steamers, steam, flags, people |
+ | `js/ui.js` | DOM layer: HUD, panels, order bubbles, basket badges, toasts |
+ | `js/sfx.js` | Small WebAudio synth for coin, ding and pop sounds |
+diff --git a/index.html b/index.html
+index 86d8707..8dc7c35 100644
+--- a/index.html
++++ b/index.html
+@@ -130,6 +130,8 @@
+       font-weight: 600;
+     }
+     .tab[aria-selected="true"] { background: linear-gradient(180deg, #f8c35a, #e3862a); color: #2a1409; box-shadow: 0 2px 8px rgba(245, 150, 40, 0.35); }
++    #panel.min { bottom: auto; }
++    #panel.min #panel-body { display: none; }
+     #panel-body { overflow-y: auto; padding: 12px; flex: 1; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+     .section-title { display: flex; justify-content: space-between; align-items: baseline; font-size: 12px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); margin: 10px 2px 8px; }
+     .section-title:first-child { margin-top: 2px; }
+@@ -223,6 +225,7 @@
+       text-align: left;
+       transition: opacity 0.2s;
+     }
++    .cust-label.below::after { top: -7px; bottom: auto; border-top: 0; border-bottom: 7px solid rgba(255, 249, 238, 0.96); }
+     .cust-label::after {
+       content: "";
+       position: absolute;
+@@ -316,21 +319,34 @@
+     .prayer-strip i { width: 16px; height: 20px; clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 85%, 0 100%); }
+ 
+     /* ---------- phones ---------- */
++    /* Desktop: HUD and toasts share the left column, the panel sits on the right. */
++    @media (min-width: 761px) {
++      #toasts { top: 200px; left: 14px; right: auto; transform: none; width: 290px; }
++    }
++    /* Phones in portrait: HUD and buttons across the top, panel as a bottom sheet. */
+     @media (max-width: 760px) {
+-      #hud { top: 10px; left: 10px; right: 10px; width: auto; padding: 9px 12px; }
++      #hud { top: 10px; left: 10px; right: 150px; width: auto; padding: 9px 12px; }
+       #money { font-size: 24px; margin: 0 0 2px; }
+       .hud-row { margin-top: 5px; }
+       #hud .stage-name { font-size: 11px; }
+-      #topbar { top: auto; bottom: calc(46vh + 10px); right: 10px; }
++      #topbar { top: 10px; bottom: auto; right: 10px; }
+       #topbar .icon-btn { height: 34px; min-width: 34px; font-size: 12px; padding: 0 9px; }
+-      #panel { top: auto; left: 0; right: 0; bottom: 0; width: auto; height: 46vh; border-radius: 18px 18px 0 0; }
++      #panel { top: auto; left: 0; right: 0; bottom: 0; width: auto; height: 42vh; border-radius: 18px 18px 0 0; }
++      #panel.min { height: auto; bottom: 0; }
+       .tab { font-size: 12px; padding: 8px 2px; }
+-      .cust-label { min-width: 110px; }
+-      #toasts { top: 120px; }
++      .cust-label { min-width: 0; padding: 4px 8px 6px; }
++      .cust-label .cl-name { display: none; }
++      .cust-label .cl-order { font-size: 12px; }
++      #toasts { top: 124px; }
+       .start-card h1 { font-size: 38px; }
+     }
++    /* Phones in landscape: a narrower HUD and panel leave the most room for the stall. */
+     @media (max-height: 560px) and (min-width: 761px) {
+-      #panel { top: 62px; }
++      #hud { width: 250px; padding: 10px 12px; }
++      #money { font-size: 24px; margin: 0 0 2px; }
++      #panel { top: 58px; width: 300px; }
++      #panel.min { bottom: auto; }
++      #toasts { width: 236px; top: 170px; }
+     }
+     @media (prefers-reduced-motion: reduce) {
+       .float, .toast { animation-duration: 0.01s; }
+diff --git a/js/main.js b/js/main.js
+index 2305699..24e74f7 100644
+--- a/js/main.js
++++ b/js/main.js
+@@ -11,7 +11,6 @@ const startEl = document.getElementById('start');
+ const btnContinue = document.getElementById('btn-continue');
+ const btnNew = document.getElementById('btn-new');
+ const btnMenu = document.getElementById('btn-menu');
+-const panelEl = document.getElementById('panel');
+ 
+ const world = createWorld(canvas);
+ const evq = [];
+@@ -20,7 +19,7 @@ let started = false;
+ let lastSave = 0;
+ let lastFrame = performance.now();
+ 
+-const ui = createUI({ act });
++const ui = createUI({ act, relayout: () => layout() });
+ 
+ // ---------- actions from UI and canvas taps ----------
+ 
+@@ -75,21 +74,51 @@ canvas.addEventListener('pointercancel', () => {
+ 
+ // ---------- layout ----------
+ 
++// Largest screen rectangle that no UI card covers. The 3D layout is framed inside it, so the
++// stall, queue and steamers are never hidden behind the HUD, the panel or the buttons.
++function freeArea(W, H, rects, pad = 10) {
++  const overlaps = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
++  let cands = [{ x: 0, y: 0, w: W, h: H }];
++  for (const r of rects) {
++    const next = [];
++    for (const c of cands) {
++      if (!overlaps(c, r)) {
++        next.push(c);
++        continue;
++      }
++      next.push(
++        { x: c.x, y: c.y, w: r.x - c.x, h: c.h },
++        { x: r.x + r.w, y: c.y, w: c.x + c.w - (r.x + r.w), h: c.h },
++        { x: c.x, y: c.y, w: c.w, h: r.y - c.y },
++        { x: c.x, y: r.y + r.h, w: c.w, h: c.y + c.h - (r.y + r.h) },
++      );
++    }
++    cands = next.filter((c) => c.w > 0 && c.h > 0).sort((a, b) => b.w * b.h - a.w * a.h).slice(0, 40);
++  }
++  const best = cands[0] || { x: 0, y: 0, w: W, h: H };
++  return { x: best.x + pad, y: best.y + pad, w: Math.max(1, best.w - 2 * pad), h: Math.max(1, best.h - 2 * pad) };
++}
++
++function rectOf(id) {
++  const r = document.getElementById(id).getBoundingClientRect();
++  return { x: r.left, y: r.top, w: r.width, h: r.height };
++}
++
+ function layout() {
+   const dpr = Math.min(window.devicePixelRatio || 1, 2);
+   const w = window.innerWidth;
+   const h = window.innerHeight;
+   canvas.width = Math.round(w * dpr);
+   canvas.height = Math.round(h * dpr);
+-  let insetR = 0, insetB = 0, insetT = 0;
+-  const panel = panelEl.getBoundingClientRect();
+-  if (w <= 760) {
+-    insetB = panel.height;
+-    insetT = document.getElementById('hud').getBoundingClientRect().bottom;
+-  } else {
+-    insetR = panel.width + 28;
+-  }
+-  world.setSize(w, h, insetR, insetB, insetT);
++  const panel = rectOf('panel');
++  const hud = rectOf('hud');
++  // Bottom sheet (phones in portrait): the HUD sits across the top and the sheet across the bottom.
++  // Side panel (desktop and landscape): the HUD and toasts share a left column, the panel is on the right.
++  const sheet = panel.w >= w - 1;
++  const rects = sheet
++    ? [hud, rectOf('topbar'), panel]
++    : [{ x: 0, y: 0, w: hud.x + hud.w + 14, h }, panel, rectOf('topbar')];
++  world.setSize(w, h, freeArea(w, h, rects));
+ }
+ 
+ // ---------- start / menu ----------
+diff --git a/js/ui.js b/js/ui.js
+index 3b4556d..823f483 100644
+--- a/js/ui.js
++++ b/js/ui.js
+@@ -12,12 +12,12 @@ import { sfx } from './sfx.js';
+ const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+ const hex = (n) => '#' + n.toString(16).padStart(6, '0');
+ 
+-export function createUI({ act }) {
++export function createUI({ act, relayout }) {
+   const $ = (id) => document.getElementById(id);
+   const el = {
+     stageName: $('stage-name'), stageNe: $('stage-ne'), money: $('money'), rep: $('rep-text'),
+     repBar: $('rep-bar'), paydayText: $('payday-text'), paydayBar: $('payday-bar'), earned: $('earned-text'),
+-    panel: $('panel-body'), tabs: document.querySelectorAll('.tab'), labels: $('labels'),
++    panel: $('panel-body'), card: $('panel'), tabs: document.querySelectorAll('.tab'), labels: $('labels'),
+     fx: $('fx'), toasts: $('toasts'), soundBtn: $('btn-sound'),
+   };
+   let tab = 'cook';
+@@ -201,9 +201,14 @@ export function createUI({ act }) {
+ 
+   el.tabs.forEach((btn) => {
+     btn.addEventListener('click', () => {
++      // Tapping the open tab folds the panel down to its tab strip, so more of the stall shows.
++      const same = btn.dataset.tab === tab;
+       tab = btn.dataset.tab;
+       el.tabs.forEach((b) => b.setAttribute('aria-selected', String(b === btn)));
+       lastHtml = '';
++      if (same) el.card.classList.toggle('min');
++      else el.card.classList.remove('min');
++      if (relayout) relayout();
+     });
+   });
+   el.panel.addEventListener('click', (e) => {
+@@ -240,7 +245,7 @@ export function createUI({ act }) {
+       <div class="cl-bar"><span></span></div>`;
+   }
+ 
+-  function renderLabels(s, world) {
++  function renderLabels(s, world, items) {
+     const seen = new Set();
+     for (const c of s.queue) {
+       seen.add(c.id);
+@@ -265,10 +270,10 @@ export function createUI({ act }) {
+       bar.style.width = `${frac * 100}%`;
+       node.classList.toggle('warn', frac < 0.5 && frac >= 0.22);
+       node.classList.toggle('angry', frac < 0.22);
+-      const p = world.customerScreen(c.id);
++      const p = world.customerFeet(c.id);
+       if (p && p.visible) {
+-        node.style.transform = `translate(${p.x}px, ${p.y - 6}px) translate(-50%, -100%)`;
+         node.style.display = '';
++        items.push({ node, x: p.x, y: p.y + 12, prio: 0, below: true });
+       } else {
+         node.style.display = 'none';
+       }
+@@ -281,7 +286,7 @@ export function createUI({ act }) {
+     }
+   }
+ 
+-  function renderBadges(s, world) {
++  function renderBadges(s, world, items) {
+     const count = s.baskets;
+     for (let i = 0; i < count; i++) {
+       if (!badgeEls[i]) {
+@@ -300,13 +305,13 @@ export function createUI({ act }) {
+       }
+       let text, cls;
+       if (st.state === 'ready') {
+-        text = `Ready ×${st.count} · collect`;
++        text = `Ready ×${st.count}`;
+         cls = 'ready';
+       } else if (st.state === 'cooking') {
+         text = `${Math.ceil(st.left)}s`;
+         cls = '';
+       } else {
+-        text = 'Tap to load';
++        text = 'Load';
+         cls = 'empty';
+       }
+       const key = `${text}|${cls}`;
+@@ -316,11 +321,41 @@ export function createUI({ act }) {
+         node._key = key;
+       }
+       node.style.display = '';
+-      node.style.transform = `translate(${p.x}px, ${p.y}px) translate(-50%, -100%)`;
++      items.push({ node, x: p.x, y: p.y, prio: 1 });
+     }
+     for (let i = count; i < badgeEls.length; i++) badgeEls[i].style.display = 'none';
+   }
+ 
++  // Positions the marks. Steamer badges (above the stall) go first and hang upward from their point.
++  // Customer labels hang downward from the feet. A mark that would collide is pushed away from its
++  // anchor, and one that would leave the free area is hidden (the customer can still be tapped).
++  function placeMarks(items, free) {
++    items.sort((a, b) => (b.prio - a.prio) || (a.below ? a.y - b.y : b.y - a.y));
++    const placed = [];
++    for (const it of items) {
++      const w = it.node.offsetWidth;
++      const h = it.node.offsetHeight;
++      const span = (y) => (it.below ? { t: y, b: y + h } : { t: y - h, b: y });
++      // Keep the whole label inside the free area, even when its customer stands at the edge.
++      it.x = Math.min(Math.max(it.x, free.x + w / 2), free.x + free.w - w / 2);
++      let y = it.y;
++      for (let k = 0; k < 8; k++) {
++        const { t, b } = span(y);
++        const hit = placed.find((r) => it.x - w / 2 < r.r && it.x + w / 2 > r.l && t < r.b && b > r.t);
++        if (!hit) break;
++        y = it.below ? hit.b + 4 : hit.t - 4;
++      }
++      const { t, b } = span(y);
++      if (t < free.y || b > free.y + free.h) {
++        it.node.style.display = 'none';
++        continue;
++      }
++      placed.push({ l: it.x - w / 2, r: it.x + w / 2, t, b });
++      it.node.style.transform = `translate(${it.x}px, ${y}px) translate(-50%, ${it.below ? '0' : '-100%'})`;
++      it.node.classList.toggle('below', !!it.below);
++    }
++  }
++
+   function updateProgress(s) {
+     el.panel.querySelectorAll('[data-prog]').forEach((node) => {
+       const i = Number(node.dataset.prog);
+@@ -404,8 +439,10 @@ export function createUI({ act }) {
+     renderHud(s, dt);
+     renderPanel(s);
+     updateProgress(s);
+-    renderLabels(s, world);
+-    renderBadges(s, world);
++    const marks = [];
++    renderBadges(s, world, marks);
++    renderLabels(s, world, marks);
++    placeMarks(marks, world.freeRect());
+   }
+ 
+   function setSoundLabel() {
+diff --git a/js/world.js b/js/world.js
+index c9d29b3..45b86dd 100644
+--- a/js/world.js
++++ b/js/world.js
+@@ -7,6 +7,13 @@ import { ITEMS, STAGES, MAX_SLOTS, ITEM_ORDER } from './data.js';
+ const TAU = Math.PI * 2;
+ const COUNTER_H = 0.9;
+ const STEAM_N = 320;
++// Steep 3/4 view from above: the camera never drops to street level.
++const CAM_ELEV = THREE.MathUtils.degToRad(56);
++const FOCUS = new THREE.Vector3(0, 0.6, -0.2); // point the layout is framed around
++// Box the camera must always show: the stall, the lane, the queue and the rooftops behind.
++const FIT = { x: 8.5, zNear: -8, zFar: 8.5, top: 9 };
++const HUMAN_SCALE = 1.2; // people read better from above when a little larger
++const FLAG_TILT = -0.6; // flags lean toward the sky so they show from above
+ const rnd = (a, b) => a + Math.random() * (b - a);
+ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+ 
+@@ -65,6 +72,42 @@ function pavingTexture() {
+   }, [90, 90]);
+ }
+ 
++// Cobbled lane and red-oxide kitchen tiles, both seen from above.
++function cobbleTexture() {
++  return canvasTex(256, 256, (g, w, h) => {
++    g.fillStyle = '#8a7660';
++    g.fillRect(0, 0, w, h);
++    for (let i = 0; i < 9; i++) {
++      for (let j = 0; j < 9; j++) {
++        const k = 0.8 + Math.random() * 0.4;
++        g.fillStyle = `rgb(${(178 * k) | 0},${(160 * k) | 0},${(138 * k) | 0})`;
++        g.beginPath();
++        g.ellipse(i * 28 + 14 + (j % 2) * 6, j * 28 + 14, 12, 10, 0, 0, TAU);
++        g.fill();
++      }
++    }
++  }, [10, 2]);
++}
++
++function kitchenTileTexture() {
++  return canvasTex(128, 128, (g, w, h) => {
++    g.fillStyle = '#7b3a26';
++    g.fillRect(0, 0, w, h);
++    g.strokeStyle = '#d9b98a';
++    g.lineWidth = 3;
++    for (let i = 0; i <= 2; i++) {
++      g.beginPath();
++      g.moveTo(i * 64, 0);
++      g.lineTo(i * 64, h);
++      g.stroke();
++      g.beginPath();
++      g.moveTo(0, i * 64);
++      g.lineTo(w, i * 64);
++      g.stroke();
++    }
++  }, [4, 2]);
++}
++
+ // Carved Newari window: dark wood frame, painted band, lattice panel.
+ function windowTexture() {
+   return canvasTex(256, 256, (g, w, h) => {
+@@ -256,7 +299,7 @@ function addFlagString(parent, flagList, a, b, sag, count, flagMats) {
+     pts.push(new THREE.Vector3().lerpVectors(A, B, t).add(new THREE.Vector3(0, -sag * 4 * t * (1 - t), 0)));
+   }
+   parent.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: 0x3b2a1a })));
+-  const W = 0.36, H = 0.28;
++  const W = 0.44, H = 0.4;
+   for (let k = 0; k < count; k++) {
+     const t = (k + 0.5) / count;
+     const p = pts[Math.round(t * 40)];
+@@ -265,8 +308,10 @@ function addFlagString(parent, flagList, a, b, sag, count, flagMats) {
+     const geo = new THREE.PlaneGeometry(W, H, 6, 2);
+     const mat = flagMats[k % flagMats.length];
+     const m = new THREE.Mesh(geo, mat);
+-    m.position.set(p.x, p.y - H / 2 - 0.02, p.z);
+-    m.rotation.y = Math.atan2(-dir.z, dir.x);
++    // Yaw along the string, then lean the flag up so its face shows from above.
++    m.rotation.order = 'YXZ';
++    m.position.set(p.x, p.y - H * 0.4, p.z);
++    m.rotation.set(FLAG_TILT, Math.atan2(-dir.z, dir.x), 0);
+     m.castShadow = true;
+     parent.add(m);
+     flagList.push({ mesh: m, base: geo.attributes.position.array.slice(), phase: k * 0.9 + Math.random() });
+@@ -384,6 +429,7 @@ function makeHuman({ shirt, pants, skin, topi, apron, white }, mats) {
+     root.add(piv);
+     h.arms.push(piv);
+   }
++  root.scale.setScalar(HUMAN_SCALE);
+   return h;
+ }
+ 
+@@ -418,7 +464,12 @@ export function createWorld(canvas) {
+   scene.fog = new THREE.Fog(0xd9c0d6, 70, 330);
+ 
+   const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 500);
+-  const cam = { yaw: 0, dragYaw: 0, dist: 12.5, height: 3.6, look: new THREE.Vector3(0, 3.0, 0) };
++  const cam = { yaw: 0, dragYaw: 0, free: { x: 0, y: 0, w: 1, h: 1 } };
++  const fitCam = new THREE.PerspectiveCamera(42, 1, 0.1, 500);
++  const fitPts = [];
++  for (const x of [-FIT.x, FIT.x]) for (const z of [FIT.zNear, FIT.zFar]) for (const y of [0, FIT.top]) fitPts.push(new THREE.Vector3(x, y, z));
++  const tmpDir = new THREE.Vector3();
++  const tmpPos = new THREE.Vector3();
+ 
+   // Lights: warm low sun, cool sky fill, and a candle-like glow over the stall.
+   scene.add(new THREE.HemisphereLight(0xd7e0ff, 0x5a3d2b, 1.0));
+@@ -426,7 +477,7 @@ export function createWorld(canvas) {
+   sun.position.set(-9, 11, 7);
+   sun.castShadow = true;
+   sun.shadow.mapSize.set(2048, 2048);
+-  Object.assign(sun.shadow.camera, { left: -14, right: 14, top: 12, bottom: -8, near: 1, far: 60 });
++  Object.assign(sun.shadow.camera, { left: -13, right: 13, top: 11, bottom: -11, near: 1, far: 70 });
+   sun.shadow.bias = -0.0008;
+   sun.shadow.normalBias = 0.02;
+   scene.add(sun);
+@@ -442,6 +493,7 @@ export function createWorld(canvas) {
+     brick: brickTexture(), paving: pavingTexture(), window: windowTexture(),
+     tarpA: stripeTexture('#c8322a', '#f4ead6'), tarpB: stripeTexture('#2456c9', '#f4ead6'),
+     eyes: buddhaEyesTexture(), roof: roofTileTexture(),
++    cobble: cobbleTexture(), kitchen: kitchenTileTexture(),
+     steam: glowTexture(255, 248, 235), fire: glowTexture(255, 130, 40),
+     gold: glowTexture(255, 200, 90), warm: glowTexture(255, 170, 80),
+   };
+@@ -463,6 +515,8 @@ export function createWorld(canvas) {
+     tarpA: new THREE.MeshStandardMaterial({ map: tex.tarpA, side: THREE.DoubleSide, roughness: 0.9 }),
+     tarpB: new THREE.MeshStandardMaterial({ map: tex.tarpB, side: THREE.DoubleSide, roughness: 0.9 }),
+     ground: new THREE.MeshStandardMaterial({ map: tex.paving, roughness: 0.95 }),
++    cobble: new THREE.MeshStandardMaterial({ map: tex.cobble, roughness: 0.95 }),
++    kitchenTile: new THREE.MeshStandardMaterial({ map: tex.kitchen, roughness: 0.6 }),
+     hair: new THREE.MeshStandardMaterial({ color: 0x17110c, roughness: 0.9 }),
+     topi: new THREE.MeshStandardMaterial({ color: 0x14110f, roughness: 0.8 }),
+     whiteCap: new THREE.MeshStandardMaterial({ color: 0xf5f3ec, roughness: 0.8 }),
+@@ -478,6 +532,15 @@ export function createWorld(canvas) {
+   }
+   const momoGeo = new THREE.SphereGeometry(0.115, 10, 8);
+   const stoveGeo = new THREE.BoxGeometry(0.9, 0.55, 0.85);
++  // Ground rings under customers (green when their order is ready) and an invisible
++  // fat hit-disc so people and steamers are easy to tap from above.
++  const ringGeo = new THREE.RingGeometry(0.62, 0.76, 28);
++  const ringMats = {
++    ok: new THREE.MeshBasicMaterial({ color: 0x5ccb74, transparent: true, opacity: 0.95, depthWrite: false }),
++    wait: new THREE.MeshBasicMaterial({ color: 0xfff4df, transparent: true, opacity: 0.35, depthWrite: false }),
++  };
++  const hitGeo = new THREE.CylinderGeometry(0.8, 0.8, 1.4, 14);
++  const hitMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false });
+ 
+   // Environment: sky, paving, Himalayan ridges.
+   const env = new THREE.Group();
+@@ -647,6 +710,9 @@ export function createWorld(canvas) {
+         momos.push(m);
+       }
+       g.add(basket);
++      const hit = new THREE.Mesh(hitGeo, hitMat);
++      hit.position.y = 0.5;
++      g.add(hit);
+       const fire = new THREE.Sprite(glowSpriteMat(tex.fire));
+       fire.position.set(0, 0.25, 0.5);
+       fire.scale.set(0.9, 0.9, 1);
+@@ -663,6 +729,41 @@ export function createWorld(canvas) {
+     }
+   }
+ 
++  // Rooftops, water tanks and marigold pots behind the lane. From above they read as a town.
++  function addRooftops(S) {
++    const walls = [mat.plaster, mat.plaster, mat.tile, mat.tile, mat.plaster, mat.plaster];
++    const blocks = [
++      [-13.5, -11.8, 6.0, 4.0, 4.4], [-6.6, -12.6, 5.0, 4.2, 6.0], [0.6, -11.6, 4.8, 3.6, 4.8],
++      [7.2, -12.8, 5.2, 4.4, 4.0], [13.6, -11.6, 6.4, 4.0, 6.6],
++    ];
++    blocks.forEach(([x, z, w, d, h], k) => {
++      const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), walls);
++      b.position.set(x, h / 2, z);
++      b.castShadow = true;
++      b.receiveShadow = true;
++      S.add(b);
++      if (k % 2 === 0) mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.9, 12), mat.metal, x + w * 0.2, h + 0.45, z + d * 0.15, S);
++      for (let p = 0; p < 3; p++) {
++        mesh(new THREE.SphereGeometry(0.2, 8, 6), mat.marigold[(k + p) % 3], x - w * 0.3 + p * 0.45, h + 0.2, z - d * 0.25, S, false);
++      }
++    });
++    // Prayer flags strung across the back of the town.
++    addFlagString(S, flagList, [-12, 6.6, -9.4], [12, 6.9, -9.4], 0.7, 20, mat.flags);
++  }
++
++  // Free-standing sign on a post, tilted up so it reads from above.
++  function addSignpost(S, x, z) {
++    mesh(new THREE.CylinderGeometry(0.06, 0.07, 1.1, 8), mat.darkWood, x, 0.55, z, S);
++    const board = new THREE.Mesh(
++      new THREE.PlaneGeometry(3.2, 0.8),
++      new THREE.MeshStandardMaterial({ map: signTexture('MOMO GHAR', 'मोमो घर'), roughness: 0.6, side: THREE.DoubleSide }),
++    );
++    board.position.set(x, 1.6, z);
++    board.rotation.x = -0.75;
++    board.castShadow = true;
++    S.add(board);
++  }
++
+   function buildStage(idx) {
+     disposeGroup(stageGroup);
+     stageGroup.clear();
+@@ -671,95 +772,106 @@ export function createWorld(canvas) {
+     const S = stageGroup;
+     const counterLen = [6.8, 9.4, 11.2][idx];
+     const counterDepth = idx === 2 ? 2.4 : 1.6;
++    const F = [-3.4, -2.4, -2.7][idx]; // street face of the building behind the kitchen
++    const poleX = counterLen / 2 - 0.4;
++    const frontZ = counterDepth / 2; // customer side of the counter
++    const backZ = -counterDepth / 2; // kitchen side of the counter
++
++    // Ground: a cobbled lane where the queue walks, and red tiles in the kitchen behind the counter.
++    const lane = new THREE.Mesh(new THREE.PlaneGeometry(44, 8.5), mat.cobble);
++    lane.rotation.x = -Math.PI / 2;
++    lane.position.set(0, 0.01, 6.6);
++    lane.receiveShadow = true;
++    S.add(lane);
++    const kD = backZ - F;
++    const kitchen = new THREE.Mesh(new THREE.PlaneGeometry(counterLen + 0.6, kD), mat.kitchenTile);
++    kitchen.rotation.x = -Math.PI / 2;
++    kitchen.position.set(0, 0.012, F + kD / 2);
++    kitchen.receiveShadow = true;
++    S.add(kitchen);
++
++    addRooftops(S);
+ 
+     if (idx === 0) {
+-      // Brick house wall behind a tiled roof with carved windows.
+-      mesh(new THREE.BoxGeometry(12, 3.6, 1.0), mat.brick, 0, 1.8, -3.9, S);
++      // Brick house with a tiled roof and carved windows.
++      mesh(new THREE.BoxGeometry(12, 3.6, 1.0), mat.brick, 0, 1.8, F - 0.5, S);
+       for (const x of [-3.6, 3.6]) {
+-        mesh(new THREE.BoxGeometry(1.4, 1.7, 0.1), mat.red, x, 2.0, -3.37, S, false);
+-        mesh(new THREE.PlaneGeometry(1.2, 1.5), mat.window, x, 2.0, -3.3, S, false);
++        mesh(new THREE.BoxGeometry(1.4, 1.7, 0.1), mat.red, x, 2.0, F + 0.02, S, false);
++        mesh(new THREE.PlaneGeometry(1.2, 1.5), mat.window, x, 2.0, F + 0.08, S, false);
+       }
+-      mesh(new THREE.BoxGeometry(0.9, 2.2, 0.1), mat.darkWood, 0, 1.3, -3.35, S, false);
+-      roofSlab(S, 13, 2.4, 3.75, -3.0, 0.28, mat.tile);
+-      mesh(new THREE.BoxGeometry(12.4, 0.18, 0.2), mat.red, 0, 3.55, -3.35, S);
+-      mesh(new THREE.PlaneGeometry(3.0, 0.62), new THREE.MeshStandardMaterial({ map: signTexture('MOMO GHAR', 'मोमो घर'), roughness: 0.6 }), 0, 3.32, -3.2, S, false);
++      mesh(new THREE.BoxGeometry(0.9, 2.2, 0.1), mat.darkWood, 0, 1.3, F + 0.02, S, false);
++      roofSlab(S, 13, 2.4, 3.75, F - 0.4, 0.28, mat.tile);
++      mesh(new THREE.BoxGeometry(12.4, 0.18, 0.2), mat.red, 0, 3.55, F + 0.02, S);
+     } else if (idx === 1) {
+-      // Two-storey Newari house with carved upper windows.
+-      mesh(new THREE.BoxGeometry(10.8, 2.4, 2.4), mat.brick, 0, 1.2, -2.6, S);
+-      mesh(new THREE.BoxGeometry(10.0, 2.2, 2.4), mat.wood, 0, 3.5, -2.4, S);
++      // Two-storey Newari house: brick ground floor, timber upper floor, two tiled roofs.
++      mesh(new THREE.BoxGeometry(10.8, 2.4, 2.4), mat.brick, 0, 1.2, F - 1.2, S);
++      mesh(new THREE.BoxGeometry(10.0, 2.2, 2.4), mat.wood, 0, 3.5, F - 1.2, S);
+       for (const x of [-3.2, 0, 3.2]) {
+-        mesh(new THREE.BoxGeometry(1.4, 1.7, 0.1), mat.red, x, 3.5, -1.15, S, false);
+-        mesh(new THREE.PlaneGeometry(1.2, 1.5), mat.window, x, 3.5, -1.1, S, false);
++        mesh(new THREE.BoxGeometry(1.4, 1.7, 0.1), mat.red, x, 3.5, F + 0.02, S, false);
++        mesh(new THREE.PlaneGeometry(1.2, 1.5), mat.window, x, 3.5, F + 0.08, S, false);
+       }
+-      mesh(new THREE.BoxGeometry(10.4, 0.18, 0.2), mat.red, 0, 2.4, -1.15, S);
+-      mesh(new THREE.BoxGeometry(10.4, 0.18, 0.2), mat.red, 0, 4.6, -1.15, S);
+-      roofSlab(S, 12, 3.6, 4.85, -2.5, 0.3, mat.tile);
+-      roofSlab(S, 9, 2.4, 5.7, -2.5, 0.3, mat.tile);
+-      mesh(new THREE.ConeGeometry(0.35, 0.9, 10), mat.gold, 0, 6.5, -2.5, S, false);
+-      mesh(new THREE.PlaneGeometry(3.6, 0.8), new THREE.MeshStandardMaterial({ map: signTexture('MOMO GHAR', 'मोमो घर'), roughness: 0.6 }), 0, 4.45, -1.1, S, false);
++      mesh(new THREE.BoxGeometry(10.4, 0.18, 0.2), mat.red, 0, 2.4, F + 0.02, S);
++      mesh(new THREE.BoxGeometry(10.4, 0.18, 0.2), mat.red, 0, 4.6, F + 0.02, S);
++      roofSlab(S, 12, 3.6, 4.85, F - 1.2, 0.3, mat.tile);
++      roofSlab(S, 9, 2.4, 5.7, F - 1.2, 0.3, mat.tile);
++      mesh(new THREE.ConeGeometry(0.35, 0.9, 10), mat.gold, 0, 6.5, F - 1.2, S, false);
+     } else {
+-      // Three-tier Newari pagoda restaurant with a stupa in the courtyard.
++      // Three-tier Newari pagoda restaurant. Each tier's roof reads as a stacked rooftop from above.
+       const tiers = [
+         { w: 12.6, h: 2.4, y: 1.2, d: 3.0, mat: mat.brick },
+         { w: 9.6, h: 2.2, y: 3.5, d: 3.0, mat: mat.wood },
+         { w: 6.6, h: 2.0, y: 5.6, d: 2.6, mat: mat.wood },
+       ];
+-      for (const t of tiers) mesh(new THREE.BoxGeometry(t.w, t.h, t.d), t.mat, 0, t.y, -4.2, S);
+-      const tierRoofs = [2.45, 4.65, 6.65];
+-      tierRoofs.forEach((y, i) => roofSlab(S, tiers[i].w + 1.6, tiers[i].d + 1.6, y, -4.2, 0.3, mat.tile));
++      for (const t of tiers) mesh(new THREE.BoxGeometry(t.w, t.h, t.d), t.mat, 0, t.y, F - t.d / 2, S);
++      [2.45, 4.65, 6.65].forEach((y, i) => roofSlab(S, tiers[i].w + 1.6, tiers[i].d + 1.6, y, F - tiers[i].d / 2, 0.3, mat.tile));
+       for (const x of [-4.5, -1.5, 1.5, 4.5]) {
+-        mesh(new THREE.BoxGeometry(1.4, 1.5, 0.1), mat.red, x, 1.3, -2.66, S, false);
+-        mesh(new THREE.PlaneGeometry(1.2, 1.3), mat.window, x, 1.3, -2.6, S, false);
++        mesh(new THREE.BoxGeometry(1.4, 1.5, 0.1), mat.red, x, 1.3, F + 0.02, S, false);
++        mesh(new THREE.PlaneGeometry(1.2, 1.3), mat.window, x, 1.3, F + 0.08, S, false);
+       }
+       for (const x of [-3.2, 3.2]) {
+-        mesh(new THREE.BoxGeometry(1.4, 1.5, 0.1), mat.red, x, 3.5, -2.66, S, false);
+-        mesh(new THREE.PlaneGeometry(1.2, 1.3), mat.window, x, 3.5, -2.6, S, false);
++        mesh(new THREE.BoxGeometry(1.4, 1.5, 0.1), mat.red, x, 3.5, F + 0.02, S, false);
++        mesh(new THREE.PlaneGeometry(1.2, 1.3), mat.window, x, 3.5, F + 0.08, S, false);
+       }
+       for (const x of [-1.8, 1.8]) {
+-        mesh(new THREE.BoxGeometry(1.4, 1.4, 0.1), mat.red, x, 5.6, -2.86, S, false);
+-        mesh(new THREE.PlaneGeometry(1.2, 1.2), mat.window, x, 5.6, -2.8, S, false);
++        mesh(new THREE.BoxGeometry(1.4, 1.4, 0.1), mat.red, x, 5.6, F + 0.02, S, false);
++        mesh(new THREE.PlaneGeometry(1.2, 1.2), mat.window, x, 5.6, F + 0.08, S, false);
+       }
+-      mesh(new THREE.PlaneGeometry(3.8, 0.8), new THREE.MeshStandardMaterial({ map: signTexture('MOMO GHAR', 'मोमो घर'), roughness: 0.6 }), 0, 3.5, -2.6, S, false);
+-      mesh(new THREE.ConeGeometry(0.4, 1.0, 10), mat.gold, 0, 7.5, -4.2, S, false);
+-      addStupa(S, 7.6, -6.5, 1.5, { white: mat.plaster, eyes: mat.eyesMat, gold: mat.gold });
++      mesh(new THREE.ConeGeometry(0.4, 1.0, 10), mat.gold, 0, 7.5, F - 1.3, S, false);
++      addStupa(S, 8.4, -8.4, 1.5, { white: mat.plaster, eyes: mat.eyesMat, gold: mat.gold });
+     }
+ 
+     // Counter: brick body with a timber top.
+     mesh(new THREE.BoxGeometry(counterLen, COUNTER_H, counterDepth), mat.brick, 0, COUNTER_H / 2, 0, S);
+     mesh(new THREE.BoxGeometry(counterLen + 0.1, 0.08, counterDepth + 0.1), mat.counterTop, 0, COUNTER_H + 0.04, 0, S);
+ 
+-    // Canopy poles and striped tarp over the counter.
+-    const poleX = counterLen / 2 - 0.4;
+-    const tarp = idx === 1 ? mat.tarpB : mat.tarpA;
++    // Open canopy: posts, a bamboo beam and a striped awning on the customer side.
++    // Nothing covers the steamers or the kitchen, so the whole stall reads from above.
+     for (const x of [-poleX, poleX]) {
+-      for (const z of [-counterDepth / 2 - 0.05, counterDepth / 2 + 0.7]) {
+-        mesh(new THREE.CylinderGeometry(0.07, 0.08, 3.0, 8), mat.bamboo, x, 1.5, z, S);
+-      }
++      for (const z of [backZ - 0.05, frontZ + 0.05]) mesh(new THREE.CylinderGeometry(0.07, 0.08, 2.4, 8), mat.bamboo, x, 1.2, z, S);
+     }
+-    const tarpMesh = new THREE.Mesh(new THREE.PlaneGeometry(counterLen + 0.8, 2.6), tarp);
+-    tarpMesh.position.set(0, 2.7, 0.35);
+-    tarpMesh.rotation.x = -Math.PI / 2 + 0.2;
+-    tarpMesh.castShadow = true;
+-    S.add(tarpMesh);
++    const beam = mesh(new THREE.CylinderGeometry(0.05, 0.05, counterLen, 6), mat.bamboo, 0, 2.4, frontZ + 0.05, S);
++    beam.rotation.z = Math.PI / 2;
++    mesh(new THREE.BoxGeometry(counterLen + 0.4, 0.06, 0.5), idx === 1 ? mat.tarpB : mat.tarpA, 0, 2.45, frontZ + 0.3, S);
+ 
+-    // Street props: gas cylinder and a stack of steamer baskets.
++    // Street props: gas cylinder, a stack of steamer baskets and a sign on a post.
+     mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.9, 14), mat.gas, counterLen / 2 + 1.1, 0.45, 0.5, S);
+     for (let k = 0; k < 3; k++) mesh(new THREE.CylinderGeometry(0.42, 0.38, 0.3, 14), mat.bamboo, -counterLen / 2 - 0.9, 0.15 + k * 0.3, 1.6, S);
++    addSignpost(S, -counterLen / 2 - 3.0, 0.6);
+ 
+-    // Lanterns hang from the canopy (base set) and extra ones with decor.
++    // Lanterns hang from the awning (base set) and extra ones with decor.
+     const lanternCount = [1, 2, 3][idx];
+     const lanternsBase = new THREE.Group();
+     S.add(lanternsBase);
+     for (let k = 0; k < lanternCount; k++) {
+       const x = (k - (lanternCount - 1) / 2) * 3.4;
+-      addLantern(lanternsBase, x, 2.4, 0.9, glowParts);
++      addLantern(lanternsBase, x, 2.3, frontZ + 0.35, glowParts);
+     }
+ 
+-    // Prayer flags: base string on every stage.
++    // Prayer flags: base string across the lane on every stage.
+     const flagsBase = new THREE.Group();
+     S.add(flagsBase);
+     const spanX = counterLen / 2 + 0.6;
+-    addFlagString(flagsBase, flagList, [-spanX, 4.1, 1.1], [spanX, 4.3, 1.1], 0.25, 9 + idx * 2, mat.flags);
++    addFlagString(flagsBase, flagList, [-spanX - 1.5, 4.6, 3.4], [spanX + 1.5, 4.8, 3.4], 0.4, 10 + idx * 2, mat.flags);
+ 
+     // Decor add-ons (visible once purchased).
+     const flagsExtra = new THREE.Group();
+@@ -767,10 +879,10 @@ export function createWorld(canvas) {
+     const lanternsExtra = new THREE.Group();
+     S.add(flagsExtra, garland, lanternsExtra);
+     addFlagString(flagsExtra, flagList, [-spanX - 1, 4.4, 1.0], [spanX + 1, 4.6, 1.0], 0.5, 14, mat.flags);
+-    addFlagString(flagsExtra, flagList, [-spanX - 0.5, 2.9, -4.5], [-spanX + 3, 5.0, -4.5], 0.4, 8, mat.flags);
+-    addFlagString(flagsExtra, flagList, [spanX - 1, 5.0, -4.5], [spanX + 2, 3.5, -2.0], 0.4, 8, mat.flags);
+-    // Marigold swags hang from the front edge of the tarp.
+-    addGarland(garland, [-poleX, 2.42, 1.95], [poleX, 2.42, 1.95], 0.35, 26, mat.marigold);
++    addFlagString(flagsExtra, flagList, [-spanX - 0.5, 2.9, F + 0.5], [-spanX + 3, 5.0, F + 0.5], 0.4, 8, mat.flags);
++    addFlagString(flagsExtra, flagList, [spanX - 1, 5.0, F + 0.5], [spanX + 2, 3.5, -1.5], 0.4, 8, mat.flags);
++    // Marigold swags hang from the front edge of the awning.
++    addGarland(garland, [-poleX, 2.2, frontZ + 0.62], [poleX, 2.2, frontZ + 0.62], 0.35, 26, mat.marigold);
+     for (let k = 0; k < 4; k++) {
+       addLantern(lanternsExtra, -counterLen / 2 + 0.5 + k * ((counterLen - 1) / 3), 1.7 + (k % 2) * 0.5, 2.7, glowParts);
+     }
+@@ -798,7 +910,16 @@ export function createWorld(canvas) {
+       topi: r() < 0.35,
+     }, mat);
+     h.root.userData.pick = { type: 'customer', id: c.id };
+-    h.root.position.set(-13, 0, 4.2 + r() * 1.2);
++    h.root.position.set(-15, 0, 4.2 + r() * 1.2);
++    // Ground ring (green when their order can be served) and a fat tap target.
++    const ring = new THREE.Mesh(ringGeo, ringMats.wait);
++    ring.rotation.x = -Math.PI / 2;
++    ring.position.y = 0.03;
++    h.root.add(ring);
++    h.ring = ring;
++    const hit = new THREE.Mesh(hitGeo, hitMat);
++    hit.position.y = 1.0;
++    h.root.add(hit);
+     h.root.rotation.y = Math.PI / 2;
+     h.id = c.id;
+     h.target.copy(h.root.position);
+@@ -808,8 +929,9 @@ export function createWorld(canvas) {
+   }
+ 
+   function queueSlot(i) {
+-    const col = i % 5, row = Math.floor(i / 5);
+-    return new THREE.Vector3((col - 2) * 1.2 + (row % 2 ? 0.5 : 0), 0, 3.0 + row * 1.35);
++    // Queue of four per row, spaced so order labels do not sit on top of each other.
++    const col = i % 4, row = Math.floor(i / 4);
++    return new THREE.Vector3((col - 1.5) * 2.6 + (row % 2 ? 1.3 : 0), 0, 3.6 + row * 2.2);
+   }
+ 
+   function removeCustomer(id) {
+@@ -824,7 +946,7 @@ export function createWorld(canvas) {
+   function buildStaff() {
+     for (let i = 0; i < 2; i++) {
+       const h = makeHuman({ shirt: 0xf5f3ec, pants: 0x30343a, skin: 0xb07a50, topi: true, apron: mat.apron, white: true }, mat);
+-      h.root.position.set(-1.1 + i * 2.2, 0, -1.9);
++      h.root.position.set(-1.1 + i * 2.2, 0, -1.15);
+       h.root.rotation.y = Math.PI;
+       h.root.visible = false;
+       scene.add(h.root);
+@@ -847,25 +969,48 @@ export function createWorld(canvas) {
+   let size = { w: 1, h: 1 };
+   const tmp = new THREE.Vector3();
+ 
+-  // insets are the screen pixels covered by UI on the right, bottom and top.
+-  function setSize(w, h, insetR = 0, insetB = 0, insetT = 0) {
++  // free is the screen rectangle (CSS px) the UI leaves open. The layout is framed inside it.
++  function setSize(w, h, free) {
+     size = { w, h };
++    cam.free = free && free.w > 0 && free.h > 0 ? free : { x: 0, y: 0, w, h };
+     renderer.setSize(w, h, false);
+     camera.aspect = w / h;
+-    const portrait = w / h < 0.9;
+-    cam.dist = portrait ? 19 : 12.5;
+-    cam.height = portrait ? 4.6 : 3.6;
+-    const baseY = portrait ? 2.4 : 3.0;
+-    const visH = 2 * cam.dist * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+-    const visW = visH * camera.aspect;
+-    // Move the look point so the stall is centred in the area the UI leaves free.
+-    const freeX = (w - insetR) / 2;
+-    const freeY = (insetT + (h - insetB)) / 2;
+-    cam.look.set(((w / 2 - freeX) / w) * visW, baseY - ((h / 2 - freeY) / h) * visH, 0);
++    fitCam.aspect = w / h;
++    fitCam.updateProjectionMatrix();
+     camera.updateProjectionMatrix();
+     steamMat.uniforms.uScale.value = h / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)));
+   }
+ 
++  // Pull the camera back just far enough that every corner of the fit box lands inside the
++  // free rectangle, then slide the image so the layout is centred in that rectangle.
++  function frameCamera(yaw) {
++    const { w: W, h: H } = size;
++    const f = cam.free;
++    const halfW = f.w / 2, halfH = f.h / 2;
++    tmpDir.set(Math.sin(yaw) * Math.cos(CAM_ELEV), Math.sin(CAM_ELEV), Math.cos(yaw) * Math.cos(CAM_ELEV));
++    const fits = (d) => {
++      fitCam.position.copy(FOCUS).addScaledVector(tmpDir, d);
++      fitCam.lookAt(FOCUS);
++      fitCam.updateMatrixWorld();
++      let worst = 0;
++      for (const p of fitPts) {
++        tmpPos.copy(p).project(fitCam);
++        worst = Math.max(worst, (Math.abs(tmpPos.x) * (W / 2)) / halfW, (Math.abs(tmpPos.y) * (H / 2)) / halfH);
++      }
++      return worst <= 1;
++    };
++    let lo = 4, hi = 150;
++    for (let i = 0; i < 32; i++) {
++      const mid = (lo + hi) / 2;
++      if (fits(mid)) hi = mid;
++      else lo = mid;
++    }
++    camera.position.copy(FOCUS).addScaledVector(tmpDir, hi);
++    camera.lookAt(FOCUS);
++    // A positive offset moves the image left, so this centres the layout in the free area.
++    camera.setViewOffset(W, H, W / 2 - (f.x + halfW), H / 2 - (f.y + halfH), W, H);
++  }
++
+   function setStage(s) {
+     if (s.stage !== stageIdx) buildStage(s.stage);
+   }
+@@ -902,6 +1047,7 @@ export function createWorld(canvas) {
+       let h = custs.get(c.id);
+       if (!h) h = spawnCustomer(c);
+       if (!h.exiting) h.target.copy(queueSlot(idx));
++      h.ring.material = (s.stock[c.item] || 0) >= c.qty ? ringMats.ok : ringMats.wait;
+     });
+     for (const [id, h] of custs) {
+       if (!ids.has(id) && !h.exiting) exitCustomer(id, 1);
+@@ -913,7 +1059,7 @@ export function createWorld(canvas) {
+     if (!h || h.exiting) return;
+     h.exiting = true;
+     h.exitDir = dir;
+-    h.target.set(dir * 13, 0, 4.5);
++    h.target.set(dir * 15, 0, 4.5);
+   }
+ 
+   function handleEvent(ev) {
+@@ -990,7 +1136,7 @@ export function createWorld(canvas) {
+         h.root.rotation.y += Math.atan2(Math.sin(want - h.root.rotation.y), Math.cos(want - h.root.rotation.y)) * Math.min(1, dt * 4);
+       }
+       animateHuman(h, time + h.phase, dt);
+-      if (h.exiting && Math.abs(h.root.position.x) > 12.5) removeCustomer(id);
++      if (h.exiting && Math.abs(h.root.position.x) > 15) removeCustomer(id);
+     }
+     for (const h of [...chefs, ...servers]) {
+       if (!h.root.visible) continue;
+@@ -1001,10 +1147,9 @@ export function createWorld(canvas) {
+         h.arms[1].rotation.x = -1.2 + Math.sin(time * 16) * 0.5;
+       }
+     }
+-    // Gentle camera sway toward the drag offset.
++    // Gentle camera sway toward the drag offset, always framed to fit the free area.
+     cam.yaw += (cam.dragYaw - cam.yaw) * Math.min(1, dt * 6);
+-    camera.position.set(Math.sin(cam.yaw) * cam.dist + cam.look.x, cam.height, Math.cos(cam.yaw) * cam.dist);
+-    camera.lookAt(cam.look);
++    frameCamera(cam.yaw);
+     // Lantern glow flicker.
+     stallGlow.intensity = (s.decor.lanterns ? 12 : 9) * (0.96 + Math.sin(time * 7.3) * 0.02);
+   }
+@@ -1013,19 +1158,32 @@ export function createWorld(canvas) {
+     renderer.render(scene, camera);
+   }
+ 
++  // Screen position in CSS px. Anything outside the free area is reported as not visible,
++  // so labels never sit under a panel.
+   function toScreen(v) {
+     tmp.copy(v).project(camera);
++    const x = ((tmp.x + 1) / 2) * size.w;
++    const y = ((1 - tmp.y) / 2) * size.h;
++    const f = cam.free;
+     return {
+-      x: ((tmp.x + 1) / 2) * size.w,
+-      y: ((1 - tmp.y) / 2) * size.h,
+-      visible: tmp.z < 1 && Math.abs(tmp.x) < 1.2 && Math.abs(tmp.y) < 1.2,
++      x,
++      y,
++      visible: tmp.z < 1 && x > f.x && x < f.x + f.w && y > f.y && y < f.y + f.h,
+     };
+   }
+ 
+   function customerScreen(id) {
+     const h = custs.get(id);
+     if (!h || h.exiting) return null;
+-    tmp.set(h.root.position.x, 2.6, h.root.position.z);
++    tmp.set(h.root.position.x, 2.7, h.root.position.z);
++    return toScreen(tmp);
++  }
++
++  // Screen point under a customer's feet, where their order label hangs.
++  function customerFeet(id) {
++    const h = custs.get(id);
++    if (!h || h.exiting) return null;
++    tmp.set(h.root.position.x, 0, h.root.position.z);
+     return toScreen(tmp);
+   }
+ 
+@@ -1034,7 +1192,7 @@ export function createWorld(canvas) {
+     if (!sl || !sl.basket.visible) return null;
+     // Back-row steamers get their badge lifted so the two rows do not overlap.
+     const lift = sl.group.position.z < 0 ? 0.9 : 0;
+-    const p = new THREE.Vector3(sl.group.position.x, COUNTER_H + 1.0 + lift, sl.group.position.z);
++    const p = new THREE.Vector3(sl.group.position.x, COUNTER_H + 1.35 + lift, sl.group.position.z);
+     return toScreen(p);
+   }
+ 
+@@ -1054,7 +1212,7 @@ export function createWorld(canvas) {
+   }
+ 
+   function dragYaw(dx) {
+-    cam.dragYaw = clamp(cam.dragYaw + dx * 0.004, -0.45, 0.45);
++    cam.dragYaw = clamp(cam.dragYaw + dx * 0.004, -0.6, 0.6);
+   }
+ 
+   function resetYaw() {
+@@ -1064,8 +1222,9 @@ export function createWorld(canvas) {
+   return {
+     renderer, scene, camera,
+     setSize, setStage, syncSlots, handleEvent, update, render,
+-    customerScreen, slotScreen, pick, dragYaw, resetYaw,
++    customerScreen, customerFeet, slotScreen, pick, dragYaw, resetYaw,
+     get slotCount() { return slots.length; },
++    freeRect() { return cam.free; },
+     dispose() {
+       renderer.dispose();
+     },

@@ -90,6 +90,10 @@ Seven scenarios adapted from [`evals/cases.json`](../cases.json), run with /obse
 
 A one-off, single-run comparison on a whole-game brief with Haiku 5.5. With /obsess it took 40 minutes and $2.40 against 27 minutes and $0.95. It found and fixed a save/reload bug that double-charged wages, cut draw calls from 501 to 89, and made four visual fixes. Both games run without console errors. One run each, so treat it as an anecdote. Details: [momo tycoon](results/2026-10-15-momo-tycoon/README.md).
 
+## Top-down rewrite: Momo Tycoon, graded
+
+Four Haiku 5.5 runs from identical starting code, two per condition, graded by a black-box browser grader (camera pitch, floor visibility under the UI on five screen sizes, a real serve loop, save and reload, errors). All four scored 5/5; the untouched game scores 3/5. No pass-rate difference; the best /obsess run had the most usability features, the worst had the most visual noise. Details: [top-down view](results/2026-10-15-momo-topview/README.md).
+
 ## Limits
 
 - Two runs per cell; one model family; one agent (Claude Code). Other agents weren't run live.
