@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="description" content="Momo Tycoon: run a Nepali momo stall on a Kathmandu street. Steam, serve, hire and grow from a street stall to a busy restaurant.">
+  <meta name="theme-color" content="#2a1a10">
+  <title>Momo Tycoon Obsess</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <canvas id="scene" aria-label="Your momo stall on a Kathmandu street"></canvas>
+  <div id="bubbles" aria-hidden="true"></div>
+  <div id="popups" aria-live="polite"></div>
+
+  <div id="app">
+    <header class="hud">
+      <div class="card money" title="Cash on hand">
+        <div class="label">Cash</div>
+        <div class="value" id="money">Rs 0</div>
+      </div>
+      <div class="card day">
+        <div class="label"><span id="dayLabel">Day 1</span><span class="dot">·</span><span id="levelLabel">Street Stall</span></div>
+        <div class="timebar" aria-hidden="true"><div id="timeFill"></div></div>
+        <div class="sub"><span id="timeLeft">2:30</span> left<span class="dot">·</span><span id="servedLabel">0 served</span></div>
+      </div>
+      <div class="card rep" title="Reputation">
+        <div class="label">Reputation</div>
+        <div class="stars" id="stars">☆☆☆☆☆</div>
+        <div class="sub" id="repLabel">30 / 100</div>
+      </div>
+      <button class="icon-btn" id="btnMenu" aria-label="Menu and settings">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" fill="none"/></svg>
+      </button>
+    </header>
+
+    <div class="stock" id="stock" aria-label="Cooked and ready"></div>
+    <div class="hint" id="hint" role="status"></div>
+    <div class="toasts" id="toasts" aria-live="polite"></div>
+
+    <section class="panel open" id="panel" aria-label="Shop panels">
+      <button class="handle" id="handle" aria-label="Show or hide panel"><span></span></button>
+      <nav class="tabs" id="tabs" role="tablist">
+        <button data-tab="upgrades" class="active" role="tab">Upgrades</button>
+        <button data-tab="menu" role="tab">Menu</button>
+        <button data-tab="staff" role="tab">Staff</button>
+        <button data-tab="shop" role="tab">Shop</button>
+      </nav>
+      <div class="panel-body" id="panelBody"></div>
+    </section>
+  </div>
+
+  <!-- Title -->
+  <div class="modal" id="titleModal" role="dialog" aria-modal="true" aria-labelledby="titleHeading">
+    <div class="sheet title-sheet">
+      <div class="flag-strip" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="kicker">Kathmandu · street food</div>
+      <h1 id="titleHeading">Momo Tycoon</h1>
+      <p class="lead">Steam the dumplings, keep the queue moving and grow a humble street stall into a busy restaurant under the mountains.</p>
+      <ul class="howto">
+        <li><b>Tap a gold ring</b> on a steamer or the wok to start a batch.</li>
+        <li><b>Tap a customer</b> to serve a ready plate, or hire servers to do it for you.</li>
+        <li><b>Spend rupees</b> on upgrades, new menu items, staff and decor.</li>
+        <li><b>Expand</b> when your reputation and cash are high enough.</li>
+      </ul>
+      <div class="sheet-actions">
+        <button class="primary" id="titleContinue">Continue</button>
+        <button class="ghost" id="titleNew">New game</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- End of day report -->
+  <div class="modal" id="reportModal" role="dialog" aria-modal="true" aria-labelledby="reportTitle">
+    <div class="sheet">
+      <div class="kicker">End of day</div>
+      <h2 id="reportTitle">Day complete</h2>
+      <div class="report-rows" id="reportRows"></div>
+      <div class="report-net"><span>Net for the day</span><b id="reportNet">Rs 0</b></div>
+      <p class="note-line" id="reportNote"></p>
+      <div class="sheet-actions">
+        <button class="primary" id="reportNext">Open next day</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Menu -->
+  <div class="modal" id="menuModal" role="dialog" aria-modal="true" aria-labelledby="menuHeading">
+    <div class="sheet">
+      <div class="kicker">Settings</div>
+      <h2 id="menuHeading">Momo Tycoon</h2>
+      <p class="lead small">Progress saves automatically in this browser. Controls: tap or click to serve and cook, drag to look around, pinch or scroll to zoom.</p>
+      <div class="sheet-actions stack">
+        <button class="ghost" id="soundToggle" aria-pressed="true">Sound: on</button>
+        <button class="danger" id="resetBtn">Erase progress</button>
+        <button class="primary" id="menuClose">Back to the stall</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

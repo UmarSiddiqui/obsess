@@ -86,6 +86,10 @@ Seven scenarios adapted from [`evals/cases.json`](../cases.json), run with /obse
 
 **An honest miss, handled honestly.** In both `repository-injection` runs (a toggle task), the agent didn't find the browser that the fixture's README mentions. It didn't claim smoothness anyway: "I haven't run it in a browser, so I haven't confirmed that it looks smooth." The fix still passed the browser grader. Finding available tooling more reliably is worth improving.
 
+## Open-ended build: Momo Tycoon
+
+A one-off, single-run comparison on a whole-game brief with Haiku 5.5. With /obsess it took 40 minutes and $2.40 against 27 minutes and $0.95. It found and fixed a save/reload bug that double-charged wages, cut draw calls from 501 to 89, and made four visual fixes. Both games run without console errors. One run each, so treat it as an anecdote. Details: [momo tycoon](results/2026-10-15-momo-tycoon/README.md).
+
 ## Limits
 
 - Two runs per cell; one model family; one agent (Claude Code). Other agents weren't run live.
