@@ -2,6 +2,12 @@
 
 Use this when the person is present. The person judges taste; you make variants, show them fairly and narrow in. It works like an eye test: "1 or 2?"
 
+## When it applies
+
+Run a guided session whenever the person is present and the request uses taste words: smooth, feel, nicer, cleaner, spacing, looks, premium, polished. An objective defect inside the request (a snap, a clipped label) doesn't cancel the session: fix it in every variant, including the one closest to the original, and say so. Never fix it directly in the real files and skip the choice.
+
+Until the final pick, all work happens in isolated copies under `.obsess/`. The real files stay untouched.
+
 ## 1. Pin the target and read past taste
 
 Resolve the one target as usual. If `.obsess/taste.md` exists in the project, read it first and start from what it says, for example "prefers 180–220ms ease-out, dislikes bounce". Never treat taste notes as permission to widen scope.
