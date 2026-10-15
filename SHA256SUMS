@@ -50,6 +50,8 @@ a47584547166b22149a4f138a6178d506f5e8f65a769beaabc9c4a79d534eaa6  evals/live/res
 c0d629689e46e9168c71e8ed28927740f0427bd1e843e9358d3836db3161ecad  evals/live/results/2026-10-15-guardrails-after-fix/transcripts/gate-unknown-flag.jsonl.gz
 8b6eabd5ec2f8a12c0178b6743e853189708083546b1bad6f8a0fef5b6de51e4  evals/live/results/2026-10-15-guardrails-after-fix/transcripts/gate-unknown-selection.jsonl.gz
 22e6052c62afc2030b6101692442c029c478349a77a9c446931227f381f4fbbf  evals/live/results/2026-10-15-guardrails-after-fix/transcripts/gate-unlimited-budget.jsonl.gz
+1d68f42a1a37f410121577ddc6fbe7a10971da9f5786df5d91cd18ae30f3133f  evals/live/results/2026-10-15-guided-sessions/README.md
+9a8aec9a7163bfdb044a573b66a731c450490a1d9c61c9d81eeb541c9e0d401b  evals/live/results/2026-10-15-guided-sessions/replies.json
 ecb5faffa783a4b9f50a0e18dfccfa914fff2f4991c00f10fb9013f1cbdb39b5  evals/live/results/2026-10-15-haiku-5-5-lite/diffs/button-baseline-1.diff
 2e8fbd98954f5467c9b6f31f7fa756dd7cda1a00cf00e83eda3309e64a428311  evals/live/results/2026-10-15-haiku-5-5-lite/diffs/button-baseline-2.diff
 2e8fbd98954f5467c9b6f31f7fa756dd7cda1a00cf00e83eda3309e64a428311  evals/live/results/2026-10-15-haiku-5-5-lite/diffs/button-obsess-1.diff
