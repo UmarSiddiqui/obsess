@@ -1,0 +1,45 @@
+diff --git a/src/toggle.css b/src/toggle.css
+index 87a5259..95c50d5 100644
+--- a/src/toggle.css
++++ b/src/toggle.css
+@@ -1,4 +1,6 @@
+ .switch {
++  --switch-duration: 0.25s;
++  --switch-easing: cubic-bezier(0.4, 0, 0.2, 1);
+   position: relative;
+   width: 44px;
+   height: 24px;
+@@ -7,11 +9,12 @@
+   border-radius: 12px;
+   background: var(--switch-off);
+   cursor: pointer;
++  /* Transition on the base state so both on and off animate. */
++  transition: background-color var(--switch-duration) var(--switch-easing);
+ }
+ 
+ .switch.on {
+   background: var(--switch-on);
+-  transition: background 0.25s;
+ }
+ 
+ .thumb {
+@@ -23,9 +26,17 @@
+   border-radius: 50%;
+   background: #fff;
+   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
++  /* transform instead of left: stays on the compositor, no layout per frame. */
++  transition: transform var(--switch-duration) var(--switch-easing);
+ }
+ 
+ .switch.on .thumb {
+-  left: 22px;
+-  transition: left 0.25s ease;
++  transform: translateX(20px);
++}
++
++@media (prefers-reduced-motion: reduce) {
++  .switch,
++  .thumb {
++    transition: none;
++  }
+ }

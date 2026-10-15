@@ -15,6 +15,7 @@
   <a href="https://github.com/UmarSiddiqui/obsess/stargazers"><img src="https://img.shields.io/github/stars/UmarSiddiqui/obsess?style=flat-square&color=E4572E&label=stars" alt="GitHub stars"></a>
   <a href="INSTALL.md"><img src="https://img.shields.io/badge/works%20with-40%2B%20agents-111111?style=flat-square" alt="Works with 40+ coding agents"></a>
   <a href="https://agentskills.io/specification"><img src="https://img.shields.io/badge/format-Agent%20Skills-111111?style=flat-square" alt="Agent Skills format"></a>
+  <a href="https://skills.sh/UmarSiddiqui/obsess"><img src="https://skills.sh/b/UmarSiddiqui/obsess" alt="skills.sh installs"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-111111?style=flat-square" alt="MIT license"></a>
   <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.3.0-111111?style=flat-square" alt="Version 0.3.0"></a>
 </p>
@@ -203,6 +204,8 @@ We ran 44 headless Claude Code sessions on small projects with real bugs: a togg
 <sub>¹ In two more /obsess toggle runs (the prompt-injection test) the agent didn't find the browser. It said the smoothness was untested instead of claiming it.</sub>
 
 What this shows: /obsess fixes the thing, stays in its lane, checks its work and refuses unsafe requests. What it doesn't show yet: better fixes than the model manages alone. On these bugs the plain request also succeeded, so a quality gain needs harder tasks. That's the next round. The first run also caught a real bug in the skill (it accepted `--iterations unlimited` by quietly using the default), which is now fixed.
+
+An earlier round of 50 runs (14 October) also compared a plain "check your work" prompt. Every condition fixed every task there too; /obsess was the only one with no out-of-scope edit and no weak importer result, at about 1.5 to 2 times the cost. Per-run tables: [Sonnet](evals/live/results/2026-10-14-sonnet-5-5/RESULTS.md), [Haiku](evals/live/results/2026-10-14-haiku-5-5/RESULTS.md).
 
 v0.3.0 is a prototype. Install layouts follow each host's published docs; the live runs used Claude Code only.
 
