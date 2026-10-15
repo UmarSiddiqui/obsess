@@ -1,0 +1,14 @@
+diff --git a/src/toolbar.css b/src/toolbar.css
+index 8d125fd..cca3fba 100644
+--- a/src/toolbar.css
++++ b/src/toolbar.css
+@@ -8,5 +8,8 @@
+ .search, .filter { height: 40px; min-width: 0; padding: 0 8px; font-size: 16px; }
+ 
+ @media (max-width: 480px) {
+-  .toolbar { grid-template-columns: 1fr 88px 104px; }
++  .toolbar { grid-template-columns: 88px minmax(0, 1fr); }
++  .search { grid-column: 1 / -1; }
++  .actions { min-width: 0; }
++  .actions .btn { width: 100%; height: auto; min-height: 40px; padding-block: 8px; white-space: normal; }
+ }

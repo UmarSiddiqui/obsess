@@ -1,0 +1,38 @@
+diff --git a/src/toggle.css b/src/toggle.css
+index 87a5259..42a0ec7 100644
+--- a/src/toggle.css
++++ b/src/toggle.css
+@@ -7,11 +7,12 @@
+   border-radius: 12px;
+   background: var(--switch-off);
+   cursor: pointer;
++  /* Same transition in both directions: it lives on the base state, not on .on */
++  transition: background-color 0.25s ease;
+ }
+ 
+ .switch.on {
+   background: var(--switch-on);
+-  transition: background 0.25s;
+ }
+ 
+ .thumb {
+@@ -23,9 +24,17 @@
+   border-radius: 50%;
+   background: #fff;
+   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
++  /* transform rather than left: no layout work per frame */
++  transition: transform 0.25s ease;
+ }
+ 
+ .switch.on .thumb {
+-  left: 22px;
+-  transition: left 0.25s ease;
++  transform: translateX(20px);
++}
++
++@media (prefers-reduced-motion: reduce) {
++  .switch,
++  .thumb {
++    transition: none;
++  }
+ }

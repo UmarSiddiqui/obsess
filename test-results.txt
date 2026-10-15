@@ -73,6 +73,6 @@ test_synthetic_receipts_stay_labelled (test_package.PackageTests.test_synthetic_
 test_wrapper_does_not_force_a_model_or_execute_shell_text (test_package.PackageTests.test_wrapper_does_not_force_a_model_or_execute_shell_text) ... ok
 
 ----------------------------------------------------------------------
-Ran 73 tests in 0.334s
+Ran 73 tests in 0.409s
 
 OK

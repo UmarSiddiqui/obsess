@@ -1,0 +1,1138 @@
+diff --git a/README.md b/README.md
+index 32f045f..c7fb248 100644
+--- a/README.md
++++ b/README.md
+@@ -4,9 +4,11 @@ A browser tycoon game about running a momo stall on a Kathmandu street. Cook mom
+ serve hungry customers, spend rupees on upgrades, hire staff, and grow from a street
+ stall into a busy Newari restaurant.
+ 
+-Everything is drawn in code with Three.js: Newari brick and carved windows, a pagoda
+-roof, a stupa with Buddha eyes, prayer flags, marigold garlands, brass lanterns, steam,
+-and a snowy Himalayan skyline.
++Everything is drawn in code with Three.js. The camera looks down on the business from
++high above, like the classic restaurant tycoon games, so the street, the queue, the
++counter, the steamers and kitchen, and the staff are all in view at once. Rooftops are
++tiled with red ridges, prayer flags string across the lane, a stupa and Buddha eyes sit
++in the courtyard, and marigold garlands and brass lanterns hang over the counter.
+ 
+ ## Run it
+ 
+@@ -22,15 +24,19 @@ import map in `index.html`. Nothing else is fetched from the network.
+ 
+ ## Controls
+ 
+-- **Steamers:** tap a steamer on the stall to load it with the item marked "Cooking" in the
+-  Cook tab. Tap it again when it is ready to collect the momos. The badge above each
+-  steamer shows the same state.
++- **Steamers:** tap a steamer on the stall (or its badge) to load it with the item marked
++  "Cooking" in the Cook tab. Tap it again when it is ready to collect the momos.
+ - **Customers:** tap a customer or their order bubble to serve them, once the tray holds
+   what they ordered. Customers who wait too long walk off and cost reputation.
+ - **Panels:** Cook (steamers and menu), Upgrade (steamer speed, bigger baskets, recipe, extra
+   baskets, decor), Staff (chefs and servers), Expand (stage requirements and achievements).
+-  On desktop the panel sits on the right. On phones it is a bottom sheet.
+-- **Camera:** drag the scene to turn the view slightly.
++  On desktop the panel sits on the right and the stats bar runs across the top. On
++  portrait phones the panel is a bottom sheet; "Hide menu" folds it so the stall gets
++  more room, and tapping a tab opens it again.
++- **Camera:** the view always frames the whole floor plan in the space the panels leave
++  free, and it re-frames when the business expands. Drag to turn the view. Pinch, the
++  mouse wheel, or the + and − buttons zoom, and Fit returns to the whole plan. Pan with
++  two fingers, or with the right mouse button or Shift + drag.
+ 
+ ## Progression
+ 
+@@ -53,10 +59,10 @@ title screen, and "Continue" resumes the saved game. Sound on/off is remembered
+ 
+ | File | Purpose |
+ | --- | --- |
+-| `index.html` | Entry point, import map, HUD, panels, title screen and styles |
++| `index.html` | Entry point, import map, top bar, panels, zoom buttons, title screen and styles |
+ | `js/main.js` | Wiring: input, layout, title screen and the frame loop |
+ | `js/sim.js` | Pure game logic: economy, cooking, customers, staff, paydays, saves |
+ | `js/data.js` | Menu, upgrades, decor, staff, stages and achievements (tune balance here) |
+-| `js/world.js` | Three.js scene: architecture, Himalayan backdrop, steamers, steam, flags, people |
++| `js/world.js` | Three.js scene: overhead camera and framing, floor plans, steamers, steam, flags, people |
+ | `js/ui.js` | DOM layer: HUD, panels, order bubbles, basket badges, toasts |
+ | `js/sfx.js` | Small WebAudio synth for coin, ding and pop sounds |
+diff --git a/index.html b/index.html
+index 86d8707..fb94b64 100644
+--- a/index.html
++++ b/index.html
+@@ -3,7 +3,7 @@
+ <head>
+   <meta charset="utf-8" />
+   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+-  <title>Momo Tycoon Plain</title>
++  <title>Momo Tycoon Top Obsess</title>
+   <meta name="description" content="Run a momo stall in Kathmandu: cook, serve, hire and grow from a street stall to a busy restaurant." />
+   <script type="importmap">
+     {
+@@ -25,6 +25,11 @@
+       --muted: #d1ae8c;
+       --shadow: 0 14px 40px rgba(20, 8, 2, 0.45);
+       --radius: 16px;
++      /* Set from JavaScript on every layout pass (see layout() in js/main.js). */
++      --hud-h: 84px;
++      --panel-w: 360px;
++      --sheet-h: 40vh;
++      --bottom-inset: 0px;
+     }
+     * { box-sizing: border-box; }
+     html, body { height: 100%; margin: 0; }
+@@ -50,7 +55,7 @@
+     }
+     #scene:active { cursor: grabbing; }
+ 
+-    /* ---------- HUD ---------- */
++    /* ---------- top bar: money, reputation, payday and buttons ---------- */
+     .card {
+       background: var(--panel);
+       border: 1px solid var(--panel-edge);
+@@ -61,63 +66,80 @@
+     }
+     #hud {
+       position: fixed;
+-      top: 14px;
+-      left: 14px;
+-      width: 290px;
+-      padding: 14px 16px 14px;
++      top: 12px;
++      left: 12px;
++      right: calc(var(--panel-w) + 24px);
++      display: flex;
++      align-items: center;
++      gap: 18px;
++      padding: 10px 14px;
+       z-index: 5;
+     }
+-    .stage-name { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); display: flex; justify-content: space-between; gap: 8px; }
++    .hud-main { flex: none; min-width: 160px; }
++    .stage-name { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); display: flex; justify-content: space-between; gap: 8px; }
+     .stage-name .ne { font-family: "Noto Sans Devanagari", system-ui, sans-serif; text-transform: none; letter-spacing: 0; font-size: 13px; color: #f3c98e; }
+     #money {
+       font-family: Georgia, "Times New Roman", serif;
+       font-weight: 700;
+-      font-size: 32px;
++      font-size: 28px;
++      line-height: 1.15;
+       color: var(--gold);
+       text-shadow: 0 2px 0 #6b3a06, 0 0 18px rgba(245, 184, 65, 0.35);
+-      margin: 4px 0 6px;
++      margin: 2px 0 0;
+       font-variant-numeric: tabular-nums;
++      white-space: nowrap;
+     }
+-    .meter { height: 8px; border-radius: 99px; background: rgba(255, 255, 255, 0.12); overflow: hidden; }
++    .hud-meters { flex: 1; min-width: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 4px 18px; }
++    .meter-row { display: flex; justify-content: space-between; align-items: baseline; font-size: 12px; color: var(--muted); gap: 8px; white-space: nowrap; overflow: hidden; }
++    .meter-row b { color: var(--cream); font-weight: 600; font-variant-numeric: tabular-nums; }
++    .meter { height: 8px; border-radius: 99px; background: rgba(255, 255, 255, 0.12); overflow: hidden; margin-top: 4px; }
+     .meter > span { display: block; height: 100%; width: 0%; border-radius: 99px; transition: width 0.4s ease; }
+     .rep-meter > span { background: linear-gradient(90deg, #e0832a, #f5c542, #5ccb74); }
+     .payday-meter > span { background: linear-gradient(90deg, #7a4a2a, #f29a2e); }
+-    .hud-row { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--muted); margin-top: 8px; gap: 8px; }
+-    .hud-row b { color: var(--cream); font-weight: 600; }
+-
+-    #topbar {
+-      position: fixed;
+-      top: 14px;
+-      right: 14px;
+-      display: flex;
+-      gap: 8px;
+-      z-index: 6;
+-    }
++    .hud-actions { flex: none; display: flex; gap: 8px; }
+     .icon-btn {
+-      height: 40px;
+-      min-width: 40px;
++      height: 38px;
++      min-width: 38px;
+       padding: 0 12px;
+       border-radius: 12px;
+       border: 1px solid var(--panel-edge);
+-      background: var(--panel);
++      background: rgba(40, 19, 10, 0.9);
+       cursor: pointer;
+       font-size: 13px;
++      font-weight: 600;
+       box-shadow: var(--shadow);
++      touch-action: manipulation;
+     }
+     .icon-btn:hover { border-color: var(--gold); }
+ 
++    /* ---------- zoom controls, bottom-left of the play area ---------- */
++    #zoom {
++      position: fixed;
++      left: 12px;
++      bottom: calc(var(--bottom-inset) + 12px);
++      display: flex;
++      flex-direction: column;
++      gap: 6px;
++      padding: 6px;
++      border-radius: 14px;
++      z-index: 5;
++    }
++    #zoom .icon-btn { height: 36px; min-width: 36px; padding: 0 8px; font-size: 18px; line-height: 1; }
++    #zoom #zoom-fit { font-size: 12px; }
++
+     /* ---------- side / bottom panel ---------- */
+     #panel {
+       position: fixed;
+-      top: 70px;
+-      right: 14px;
+-      bottom: 14px;
+-      width: 360px;
++      top: calc(var(--hud-h) + 12px);
++      right: 12px;
++      bottom: 12px;
++      width: var(--panel-w);
+       display: flex;
+       flex-direction: column;
+       z-index: 5;
+       overflow: hidden;
+     }
++    .sheet-toggle { display: none; }
+     .tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 8px; border-bottom: 1px solid var(--panel-edge); }
+     .tab {
+       padding: 9px 4px;
+@@ -282,7 +304,7 @@
+       100% { opacity: 0; transform: translate(-50%, -70px) scale(1); }
+     }
+ 
+-    #toasts { position: fixed; top: 84px; left: 50%; transform: translateX(-50%); display: grid; gap: 8px; z-index: 7; width: min(460px, calc(100vw - 32px)); pointer-events: none; }
++    #toasts { position: fixed; top: calc(var(--hud-h) + 12px); left: 50%; transform: translateX(-50%); display: grid; gap: 8px; z-index: 7; width: min(420px, calc(100vw - 32px)); pointer-events: none; }
+     .toast { padding: 11px 14px; border-radius: 14px; font-size: 13px; animation: toastIn 0.35s ease, toastOut 0.5s ease 3.1s forwards; box-shadow: var(--shadow); }
+     .toast b { display: block; font-size: 14px; margin-bottom: 2px; }
+     .toast.good { background: linear-gradient(180deg, #3c2412, #241107); border: 1px solid var(--gold); color: var(--cream); }
+@@ -302,6 +324,7 @@
+       padding: 20px;
+       background: radial-gradient(ellipse at 50% 30%, rgba(255, 180, 100, 0.12), rgba(10, 4, 2, 0.72) 75%);
+       transition: opacity 0.6s ease;
++      overflow-y: auto;
+     }
+     #start.hidden { opacity: 0; pointer-events: none; }
+     .start-card { max-width: 440px; width: 100%; padding: 28px 26px 22px; text-align: center; }
+@@ -315,22 +338,44 @@
+     .prayer-strip { display: flex; justify-content: center; gap: 6px; margin-bottom: 14px; }
+     .prayer-strip i { width: 16px; height: 20px; clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 85%, 0 100%); }
+ 
+-    /* ---------- phones ---------- */
+-    @media (max-width: 760px) {
+-      #hud { top: 10px; left: 10px; right: 10px; width: auto; padding: 9px 12px; }
+-      #money { font-size: 24px; margin: 0 0 2px; }
+-      .hud-row { margin-top: 5px; }
+-      #hud .stage-name { font-size: 11px; }
+-      #topbar { top: auto; bottom: calc(46vh + 10px); right: 10px; }
+-      #topbar .icon-btn { height: 34px; min-width: 34px; font-size: 12px; padding: 0 9px; }
+-      #panel { top: auto; left: 0; right: 0; bottom: 0; width: auto; height: 46vh; border-radius: 18px 18px 0 0; }
+-      .tab { font-size: 12px; padding: 8px 2px; }
+-      .cust-label { min-width: 110px; }
+-      #toasts { top: 120px; }
+-      .start-card h1 { font-size: 38px; }
++    /* ---------- portrait phones: the panel becomes a bottom sheet ---------- */
++    body.sheet #hud { right: 12px; flex-wrap: wrap; gap: 6px 12px; padding: 8px 12px; }
++    body.sheet .hud-main { flex: 1; min-width: 0; }
++    body.sheet #money { font-size: 22px; margin: 0; }
++    body.sheet .hud-meters { order: 3; flex-basis: 100%; gap: 0 14px; }
++    body.sheet .meter { margin-top: 3px; }
++    body.sheet .hud-actions { order: 2; }
++    body.sheet .icon-btn { height: 34px; min-width: 34px; padding: 0 9px; font-size: 12px; }
++    body.sheet #panel { top: auto; left: 0; right: 0; bottom: 0; width: auto; height: var(--sheet-h); border-radius: 18px 18px 0 0; }
++    body.sheet .sheet-toggle {
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      gap: 8px;
++      width: 100%;
++      height: 26px;
++      flex: none;
++      border: 0;
++      background: transparent;
++      color: var(--muted);
++      font-size: 12px;
++      cursor: pointer;
++      padding: 0;
+     }
+-    @media (max-height: 560px) and (min-width: 761px) {
+-      #panel { top: 62px; }
++    body.sheet .sheet-toggle i { width: 44px; height: 4px; border-radius: 4px; background: rgba(255, 255, 255, 0.32); }
++    body.sheet .tabs { padding: 4px 8px 8px; }
++    body.sheet.collapsed #panel-body { display: none; }
++    body.sheet #earned-text { display: none; }
++    body.sheet .stage-name .ne { display: none; }
++    body.sheet .basket-badge { font-size: 10px; padding: 4px 7px; }
++    body.sheet .cust-label { min-width: 0; padding: 5px 8px 6px; }
++    body.sheet .cust-label .cl-name { display: none; }
++    body.sheet .cust-label .cl-order { font-size: 12px; margin-top: 0; }
++    body.sheet .cust-label .cl-bar { margin-top: 3px; }
++    /* Narrower screens keep the top bar to one row; total earned is on the Expand tab. */
++    @media (max-width: 1140px) {
++      #earned-text { display: none; }
++      .hud-meters { gap: 4px 12px; }
+     }
+     @media (prefers-reduced-motion: reduce) {
+       .float, .toast { animation-duration: 0.01s; }
+@@ -341,20 +386,30 @@
+   <canvas id="scene" aria-label="Momo stall in Kathmandu"></canvas>
+ 
+   <div id="hud" class="card" aria-live="polite">
+-    <div class="stage-name"><span id="stage-name">Street Stall</span><span class="ne" id="stage-ne"></span></div>
+-    <div id="money">Rs 0</div>
+-    <div class="hud-row"><span>Reputation</span><b id="rep-text">40</b></div>
+-    <div class="meter rep-meter"><span id="rep-bar"></span></div>
+-    <div class="hud-row"><span id="payday-text">Payday in 60s</span><b id="earned-text"></b></div>
+-    <div class="meter payday-meter" style="margin-top:4px"><span id="payday-bar"></span></div>
++    <div class="hud-main">
++      <div class="stage-name"><span id="stage-name">Street Stall</span><span class="ne" id="stage-ne"></span></div>
++      <div id="money">Rs 0</div>
++    </div>
++    <div class="hud-meters">
++      <div class="meter-row"><span>Reputation</span><b id="rep-text">40</b></div>
++      <div class="meter-row"><span id="payday-text">Payday in 60s</span><b id="earned-text"></b></div>
++      <div class="meter rep-meter"><span id="rep-bar"></span></div>
++      <div class="meter payday-meter"><span id="payday-bar"></span></div>
++    </div>
++    <div class="hud-actions">
++      <button class="icon-btn" id="btn-sound" title="Toggle sound">Sound: on</button>
++      <button class="icon-btn" id="btn-menu" title="Main menu">Menu</button>
++    </div>
+   </div>
+ 
+-  <div id="topbar">
+-    <button class="icon-btn" id="btn-sound" title="Toggle sound">Sound: on</button>
+-    <button class="icon-btn" id="btn-menu" title="Main menu">Menu</button>
++  <div id="zoom" class="card" role="group" aria-label="Zoom the stall view">
++    <button class="icon-btn" id="zoom-in" title="Zoom in" aria-label="Zoom in">+</button>
++    <button class="icon-btn" id="zoom-out" title="Zoom out" aria-label="Zoom out">&minus;</button>
++    <button class="icon-btn" id="zoom-fit" title="Show the whole stall" aria-label="Show the whole stall">Fit</button>
+   </div>
+ 
+   <aside id="panel" class="card" aria-label="Stall management">
++    <button class="sheet-toggle" id="sheet-toggle" aria-expanded="true" aria-controls="panel-body"><i></i><span id="sheet-toggle-text">Hide menu</span></button>
+     <div class="tabs" role="tablist">
+       <button class="tab" role="tab" data-tab="cook" aria-selected="true">Cook</button>
+       <button class="tab" role="tab" data-tab="upgrade" aria-selected="false">Upgrade</button>
+diff --git a/js/main.js b/js/main.js
+index 2305699..9a52ee4 100644
+--- a/js/main.js
++++ b/js/main.js
+@@ -11,7 +11,10 @@ const startEl = document.getElementById('start');
+ const btnContinue = document.getElementById('btn-continue');
+ const btnNew = document.getElementById('btn-new');
+ const btnMenu = document.getElementById('btn-menu');
++const hudEl = document.getElementById('hud');
+ const panelEl = document.getElementById('panel');
++const sheetToggle = document.getElementById('sheet-toggle');
++const sheetText = document.getElementById('sheet-toggle-text');
+ 
+ const world = createWorld(canvas);
+ const evq = [];
+@@ -45,35 +48,87 @@ function act(name, arg) {
+   }
+ }
+ 
+-// ---------- canvas pointer: tap to act, drag to turn the view ----------
+-
+-let press = null;
+-canvas.addEventListener('pointerdown', (e) => {
+-  press = { x: e.clientX, y: e.clientY, id: e.pointerId, moved: false };
+-  canvas.setPointerCapture(e.pointerId);
+-});
+-canvas.addEventListener('pointermove', (e) => {
++// ---------- pointer: tap, drag, pan and pinch ----------
++// One finger on the scene: tap to act, drag to turn the view. Right or middle button,
++// or Shift-drag: pan. Two fingers: pinch to zoom and move to pan. Mouse wheel: zoom.
++// Pointers are tracked on the window, so a pinch still works when a finger starts on
++// a steamer badge or an order label (those are buttons, not the canvas).
++
++const pointers = new Map();
++let press = null; // the one-finger gesture that started on the scene
++let pinchLast = null;
++
++const pinchInfo = () => {
++  const [a, b] = [...pointers.values()];
++  return { d: Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)), cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2 };
++};
++
++window.addEventListener('pointerdown', (e) => {
++  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
++  if (pointers.size === 1 && e.target === canvas) {
++    canvas.setPointerCapture(e.pointerId);
++    press = {
++      id: e.pointerId, x: e.clientX, y: e.clientY, moved: false,
++      pan: e.button === 1 || e.button === 2 || e.shiftKey,
++    };
++  } else if (pointers.size === 2) {
++    if (press) press.moved = true; // a pinch is never a tap
++    pinchLast = pinchInfo();
++  }
++}, true);
++
++window.addEventListener('pointermove', (e) => {
++  const p = pointers.get(e.pointerId);
++  if (!p) return;
++  const dx = e.clientX - p.x;
++  const dy = e.clientY - p.y;
++  p.x = e.clientX;
++  p.y = e.clientY;
++  if (pointers.size >= 2 && pinchLast) {
++    const now = pinchInfo();
++    world.zoomBy(now.d / pinchLast.d);
++    world.panBy(now.cx - pinchLast.cx, now.cy - pinchLast.cy);
++    pinchLast = now;
++    return;
++  }
+   if (!press || press.id !== e.pointerId) return;
+-  const dx = e.clientX - press.x;
+-  if (Math.abs(dx) + Math.abs(e.clientY - press.y) > 8) press.moved = true;
++  if (Math.hypot(e.clientX - press.x, e.clientY - press.y) > 8) press.moved = true;
+   if (press.moved) {
+-    world.dragYaw(e.movementX);
++    if (press.pan) world.panBy(dx, dy);
++    else world.dragYaw(dx);
+   }
+-});
+-canvas.addEventListener('pointerup', (e) => {
+-  if (!press || press.id !== e.pointerId) return;
+-  if (!press.moved && started) {
++}, true);
++
++function endPointer(e) {
++  const wasPress = press && press.id === e.pointerId;
++  pointers.delete(e.pointerId);
++  pinchLast = null;
++  if (!wasPress) return;
++  const tap = !press.moved && started && e.type === 'pointerup';
++  press = null;
++  if (tap) {
+     const hit = world.pick(e.clientX, e.clientY, canvas.getBoundingClientRect());
+     if (hit?.type === 'slot') act('tap', String(hit.i));
+     else if (hit?.type === 'customer') act('serve', String(hit.id));
+   }
+-  press = null;
+-});
+-canvas.addEventListener('pointercancel', () => {
+-  press = null;
+-});
++}
++window.addEventListener('pointerup', endPointer, true);
++window.addEventListener('pointercancel', endPointer, true);
++canvas.addEventListener('contextmenu', (e) => e.preventDefault());
++canvas.addEventListener('wheel', (e) => {
++  e.preventDefault();
++  world.zoomBy(Math.exp(-e.deltaY * 0.0015));
++}, { passive: false });
++
++document.getElementById('zoom-in').addEventListener('click', () => world.zoomBy(1.25));
++document.getElementById('zoom-out').addEventListener('click', () => world.zoomBy(0.8));
++document.getElementById('zoom-fit').addEventListener('click', () => world.resetView());
+ 
+ // ---------- layout ----------
++// Portrait phones get a bottom sheet. Everything else gets a top bar and a side
++// panel. The 3D view is framed in whatever rectangle those leave free.
++
++let sheetCollapsed = false;
+ 
+ function layout() {
+   const dpr = Math.min(window.devicePixelRatio || 1, 2);
+@@ -81,16 +136,37 @@ function layout() {
+   const h = window.innerHeight;
+   canvas.width = Math.round(w * dpr);
+   canvas.height = Math.round(h * dpr);
+-  let insetR = 0, insetB = 0, insetT = 0;
+-  const panel = panelEl.getBoundingClientRect();
+-  if (w <= 760) {
+-    insetB = panel.height;
+-    insetT = document.getElementById('hud').getBoundingClientRect().bottom;
+-  } else {
+-    insetR = panel.width + 28;
+-  }
+-  world.setSize(w, h, insetR, insetB, insetT);
++
++  const sheet = w < h * 0.9;
++  const collapsed = sheet && sheetCollapsed;
++  document.body.classList.toggle('sheet', sheet);
++  document.body.classList.toggle('collapsed', collapsed);
++  const panelW = sheet ? w : Math.round(Math.min(360, Math.max(260, w * 0.3)));
++  const sheetH = sheet ? (collapsed ? 96 : Math.round(h * 0.4)) : 0;
++  const style = document.documentElement.style;
++  style.setProperty('--panel-w', `${panelW}px`);
++  style.setProperty('--sheet-h', `${sheetH}px`);
++  style.setProperty('--bottom-inset', `${sheetH}px`);
++
++  const hudBottom = Math.ceil(hudEl.getBoundingClientRect().bottom);
++  style.setProperty('--hud-h', `${hudBottom}px`);
++  const free = sheet
++    ? { l: 0, t: hudBottom + 8, r: w, b: h - sheetH }
++    : { l: 0, t: hudBottom + 10, r: w - panelW - 24, b: h - 12 };
++  world.setSize(w, h, free);
++}
++
++function setSheetCollapsed(on) {
++  sheetCollapsed = on;
++  sheetToggle.setAttribute('aria-expanded', String(!on));
++  sheetText.textContent = on ? 'Show menu' : 'Hide menu';
++  layout();
+ }
++sheetToggle.addEventListener('click', () => setSheetCollapsed(!sheetCollapsed));
++// Picking a tab while the sheet is folded opens it again.
++panelEl.addEventListener('click', (e) => {
++  if (sheetCollapsed && e.target.closest('.tab')) setSheetCollapsed(false);
++});
+ 
+ // ---------- start / menu ----------
+ 
+diff --git a/js/ui.js b/js/ui.js
+index 3b4556d..0686d69 100644
+--- a/js/ui.js
++++ b/js/ui.js
+@@ -283,6 +283,18 @@ export function createUI({ act }) {
+ 
+   function renderBadges(s, world) {
+     const count = s.baskets;
++    const pts = [];
++    for (let i = 0; i < count; i++) pts.push(world.slotScreen(i));
++    // Shorter badge text when neighbouring steamers would crowd each other on
++    // screen, and on narrow screens (bottom-sheet phones, small landscape).
++    let tight = false;
++    for (let i = 0; i < count; i++) {
++      for (let j = i + 1; j < count; j++) {
++        const a = pts[i], b = pts[j];
++        if (a && b && a.visible && b.visible && Math.abs(a.y - b.y) < 40 && Math.abs(a.x - b.x) < 120) tight = true;
++      }
++    }
++    const compact = tight || document.body.classList.contains('sheet') || window.innerWidth < 900;
+     for (let i = 0; i < count; i++) {
+       if (!badgeEls[i]) {
+         const b = document.createElement('button');
+@@ -293,20 +305,20 @@ export function createUI({ act }) {
+       }
+       const node = badgeEls[i];
+       const st = s.slots[i];
+-      const p = world.slotScreen(i);
++      const p = pts[i];
+       if (!p || !p.visible) {
+         node.style.display = 'none';
+         continue;
+       }
+       let text, cls;
+       if (st.state === 'ready') {
+-        text = `Ready ×${st.count} · collect`;
++        text = compact ? `Ready ×${st.count}` : `Ready ×${st.count} · collect`;
+         cls = 'ready';
+       } else if (st.state === 'cooking') {
+         text = `${Math.ceil(st.left)}s`;
+         cls = '';
+       } else {
+-        text = 'Tap to load';
++        text = compact ? 'Load' : 'Tap to load';
+         cls = 'empty';
+       }
+       const key = `${text}|${cls}`;
+diff --git a/js/world.js b/js/world.js
+index c9d29b3..aafff94 100644
+--- a/js/world.js
++++ b/js/world.js
+@@ -7,6 +7,15 @@ import { ITEMS, STAGES, MAX_SLOTS, ITEM_ORDER } from './data.js';
+ const TAU = Math.PI * 2;
+ const COUNTER_H = 0.9;
+ const STEAM_N = 320;
++// Overhead 3/4 camera: steep elevation, narrow lens. PLANS[] is the floor plan
++// each stage must keep fully on screen (x/z ground extents, maxY = tallest roof).
++const FOV = 34;
++const ELEV = THREE.MathUtils.degToRad(57);
++const PLANS = [
++  { minX: -7.6, maxX: 7.6, minZ: -5.2, maxZ: 8.6, maxY: 4.8 },
++  { minX: -10.8, maxX: 10.8, minZ: -6.6, maxZ: 8.6, maxY: 6.6 },
++  { minX: -11.6, maxX: 11.6, minZ: -8.0, maxZ: 8.6, maxY: 8.4 },
++];
+ const rnd = (a, b) => a + Math.random() * (b - a);
+ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+ 
+@@ -204,6 +213,58 @@ function skyTexture() {
+   });
+ }
+ 
++function kitchenTexture() {
++  return canvasTex(256, 256, (g, w, h) => {
++    g.fillStyle = '#6d6259';
++    g.fillRect(0, 0, w, h);
++    for (let i = 0; i < 4; i++) {
++      for (let j = 0; j < 4; j++) {
++        const k = 0.92 + Math.random() * 0.1;
++        g.fillStyle = `rgb(${(232 * k) | 0},${(222 * k) | 0},${(200 * k) | 0})`;
++        g.fillRect(i * 64 + 4, j * 64 + 4, 56, 56);
++      }
++    }
++  });
++}
++
++function woodFloorTexture() {
++  return canvasTex(256, 256, (g, w, h) => {
++    for (let r = 0; r < 8; r++) {
++      const k = 0.85 + Math.random() * 0.25;
++      g.fillStyle = `rgb(${(139 * k) | 0},${(90 * k) | 0},${(52 * k) | 0})`;
++      g.fillRect(0, r * 32, w, 32);
++      g.fillStyle = 'rgba(40,20,8,0.45)';
++      g.fillRect(0, r * 32, w, 2);
++    }
++  });
++}
++
++function roadTexture() {
++  return canvasTex(256, 256, (g, w, h) => {
++    g.fillStyle = '#5b5148';
++    g.fillRect(0, 0, w, h);
++    for (let i = 0; i < 30; i++) {
++      const k = 0.7 + Math.random() * 0.5;
++      g.fillStyle = `rgb(${(120 * k) | 0},${(104 * k) | 0},${(90 * k) | 0})`;
++      g.beginPath();
++      g.ellipse(Math.random() * w, Math.random() * h, 7 + Math.random() * 6, 5 + Math.random() * 4, Math.random() * 3, 0, TAU);
++      g.fill();
++    }
++  });
++}
++
++// Soft contact shadow under people so they read clearly from overhead.
++function blobTexture() {
++  return canvasTex(128, 128, (g) => {
++    const grd = g.createRadialGradient(64, 64, 0, 64, 64, 64);
++    grd.addColorStop(0, 'rgba(20,10,5,0.6)');
++    grd.addColorStop(0.6, 'rgba(20,10,5,0.28)');
++    grd.addColorStop(1, 'rgba(20,10,5,0)');
++    g.fillStyle = grd;
++    g.fillRect(0, 0, 128, 128);
++  });
++}
++
+ // ---------- geometry helpers ----------
+ 
+ function mesh(geo, mat, x, y, z, parent, cast = true) {
+@@ -329,16 +390,66 @@ function addStupa(parent, x, z, scale, mats) {
+ }
+ 
+ // Two-tier sloped roof built from tilted slabs (Newari style).
++// Tilted tile roof with a red ridge along its crown, so the rooftop reads from above.
++const ridgeMat = new THREE.MeshStandardMaterial({ color: 0x9c2f1c, roughness: 0.6 });
+ function roofSlab(parent, w, d, y, z, tilt, mat) {
+   const g = new THREE.Group();
+   g.position.set(0, y, z);
+   g.rotation.x = -tilt;
+   mesh(new THREE.BoxGeometry(w, 0.24, d), mat, 0, 0, 0, g);
+   mesh(new THREE.BoxGeometry(w * 0.98, 0.1, 0.2), mat, 0, -0.16, d / 2 - 0.05, g, false);
++  mesh(new THREE.BoxGeometry(w * 0.96, 0.12, 0.28), ridgeMat, 0, 0.17, 0, g, false);
+   parent.add(g);
+   return g;
+ }
+ 
++// Flat floor patch on the ground: kitchen tiles, a wooden deck or the cobbled road.
++function floorPatch(parent, texture, x, z, w, d, tileM, y = 0.015) {
++  const t = texture.clone();
++  t.repeat.set(w / tileM, d / tileM);
++  t.needsUpdate = true;
++  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshStandardMaterial({ map: t, roughness: 0.9 }));
++  m.rotation.x = -Math.PI / 2;
++  m.position.set(x, y, z);
++  m.receiveShadow = true;
++  parent.add(m);
++  return m;
++}
++
++// Potted shrub with a marigold, seen as a green cluster from above.
++function shrubPot(parent, x, z, m) {
++  const g = new THREE.Group();
++  g.position.set(x, 0, z);
++  mesh(new THREE.CylinderGeometry(0.42, 0.32, 0.5, 12), m.pot, 0, 0.25, 0, g);
++  mesh(new THREE.SphereGeometry(0.62, 12, 10), m.shrub, 0, 0.95, 0, g);
++  mesh(new THREE.SphereGeometry(0.36, 10, 8), m.shrub2, 0.35, 1.3, 0.2, g);
++  mesh(new THREE.SphereGeometry(0.22, 8, 6), m.marigold[0], -0.3, 1.25, -0.2, g, false);
++  parent.add(g);
++}
++
++// Round table with a red cloth and four stools, a restaurant floor-plan staple.
++function diningTable(parent, x, z, m) {
++  const g = new THREE.Group();
++  g.position.set(x, 0, z);
++  mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.05, 18), m.cloth, 0, 0.78, 0, g);
++  mesh(new THREE.CylinderGeometry(0.06, 0.12, 0.76, 8), m.wood, 0, 0.38, 0, g, false);
++  for (let k = 0; k < 4; k++) {
++    const a = (k * TAU) / 4 + 0.4;
++    const sx = Math.cos(a) * 0.9, sz = Math.sin(a) * 0.9;
++    mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.06, 12), m.wood, sx, 0.45, sz, g);
++    mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.44, 6), m.wood, sx, 0.22, sz, g, false);
++  }
++  parent.add(g);
++}
++
++// Shelf of steel pots along a kitchen wall.
++function kitchenShelf(parent, x0, x1, z, y, m) {
++  mesh(new THREE.BoxGeometry(x1 - x0, 0.1, 0.42), m.wood, (x0 + x1) / 2, y, z, parent);
++  for (let x = x0 + 0.5; x < x1 - 0.3; x += 0.9) {
++    mesh(new THREE.CylinderGeometry(0.2, 0.16, 0.26, 12), m.metal, x, y + 0.18, z, parent);
++  }
++}
++
+ function disposeGroup(group) {
+   group.traverse((o) => {
+     if (o.geometry) o.geometry.dispose();
+@@ -346,9 +457,11 @@ function disposeGroup(group) {
+ }
+ 
+ // ---------- humans ----------
++const HUMAN_SCALE = 1.18;
+ 
+ function makeHuman({ shirt, pants, skin, topi, apron, white }, mats) {
+   const root = new THREE.Group();
++  root.scale.setScalar(HUMAN_SCALE);
+   const shirtM = new THREE.MeshStandardMaterial({ color: shirt, roughness: 0.8 });
+   const pantsM = new THREE.MeshStandardMaterial({ color: pants, roughness: 0.9 });
+   const skinM = new THREE.MeshStandardMaterial({ color: skin, roughness: 0.7 });
+@@ -417,8 +530,8 @@ export function createWorld(canvas) {
+   scene.background = skyTexture();
+   scene.fog = new THREE.Fog(0xd9c0d6, 70, 330);
+ 
+-  const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 500);
+-  const cam = { yaw: 0, dragYaw: 0, dist: 12.5, height: 3.6, look: new THREE.Vector3(0, 3.0, 0) };
++  const camera = new THREE.PerspectiveCamera(FOV, 1, 0.5, 400);
++  const cam = { yaw: 0, dragYaw: 0, zoom: 1, zoomTarget: 1, pan: new THREE.Vector2(), dist: 20 };
+ 
+   // Lights: warm low sun, cool sky fill, and a candle-like glow over the stall.
+   scene.add(new THREE.HemisphereLight(0xd7e0ff, 0x5a3d2b, 1.0));
+@@ -426,7 +539,7 @@ export function createWorld(canvas) {
+   sun.position.set(-9, 11, 7);
+   sun.castShadow = true;
+   sun.shadow.mapSize.set(2048, 2048);
+-  Object.assign(sun.shadow.camera, { left: -14, right: 14, top: 12, bottom: -8, near: 1, far: 60 });
++  Object.assign(sun.shadow.camera, { left: -16, right: 16, top: 14, bottom: -14, near: 1, far: 70 });
+   sun.shadow.bias = -0.0008;
+   sun.shadow.normalBias = 0.02;
+   scene.add(sun);
+@@ -444,6 +557,7 @@ export function createWorld(canvas) {
+     eyes: buddhaEyesTexture(), roof: roofTileTexture(),
+     steam: glowTexture(255, 248, 235), fire: glowTexture(255, 130, 40),
+     gold: glowTexture(255, 200, 90), warm: glowTexture(255, 170, 80),
++    kitchen: kitchenTexture(), wood: woodFloorTexture(), road: roadTexture(), blob: blobTexture(),
+   };
+   const mat = {
+     brick: new THREE.MeshStandardMaterial({ map: tex.brick, roughness: 0.95 }),
+@@ -471,6 +585,12 @@ export function createWorld(canvas) {
+     marigold: [0xf08a1c, 0xffb020, 0xe86a14].map((c) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.6, emissive: 0x331200 })),
+     flags: [0x1f5fd6, 0xf5f5f0, 0xd7262a, 0x1f9a4c, 0xf5c518].map((c) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.9, side: THREE.DoubleSide })),
+   };
++  Object.assign(mat, {
++    pot: new THREE.MeshStandardMaterial({ color: 0xb5643a, roughness: 0.8 }),
++    shrub: new THREE.MeshStandardMaterial({ color: 0x3f7a3a, roughness: 0.9 }),
++    shrub2: new THREE.MeshStandardMaterial({ color: 0x5f9a4a, roughness: 0.9 }),
++    cloth: new THREE.MeshStandardMaterial({ color: 0xb8322a, roughness: 0.9 }),
++  });
+   const glowSpriteMat = (t) => new THREE.SpriteMaterial({ map: t, color: 0xffffff, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true });
+   const momoMats = {};
+   for (const k of ITEM_ORDER) {
+@@ -478,6 +598,8 @@ export function createWorld(canvas) {
+   }
+   const momoGeo = new THREE.SphereGeometry(0.115, 10, 8);
+   const stoveGeo = new THREE.BoxGeometry(0.9, 0.55, 0.85);
++  // Invisible but pickable: tap targets wider than the figures themselves.
++  const hitMat = new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false });
+ 
+   // Environment: sky, paving, Himalayan ridges.
+   const env = new THREE.Group();
+@@ -566,7 +688,7 @@ export function createWorld(canvas) {
+       sPos[i * 3] += (sVel[i * 3] + Math.sin(sAge[i] * 2 + i) * 0.08) * dt;
+       sPos[i * 3 + 1] += sVel[i * 3 + 1] * dt;
+       sPos[i * 3 + 2] += sVel[i * 3 + 2] * dt;
+-      sSize[i] = 0.45 + sAge[i] * 0.55;
++      sSize[i] = 0.3 + sAge[i] * 0.4;
+       sAlpha[i] = Math.min(1, sAge[i] * 1.5) * clamp(sLife[i] * 0.9, 0, 1);
+     }
+     steamGeo.attributes.position.needsUpdate = true;
+@@ -657,23 +779,48 @@ export function createWorld(canvas) {
+       ready.scale.set(1.3, 1.3, 1);
+       ready.visible = false;
+       g.add(ready);
++      const hitArea = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 2.2, 10), hitMat);
++      hitArea.position.y = 1.2;
++      g.add(hitArea);
+       g.userData.pick = { type: 'slot', i: slots.length };
+       slotGroup.add(g);
+       slots.push({ group: g, basket, lid, momos, fire, ready, worldPos: new THREE.Vector3(p.x, COUNTER_H + 1.1, p.z), item: null });
+     }
+   }
+ 
++  // Floor plan per stage, drawn to be read from overhead: kitchen behind the
++  // counter, street and queue in front, and a patio (shop) or dining hall
++  // (restaurant) to the side. planCur eases toward planTarget when stages change.
++  const planCur = { ...PLANS[0] };
++  let planTarget = PLANS[0];
++
+   function buildStage(idx) {
+     disposeGroup(stageGroup);
+     stageGroup.clear();
+     flagList.length = 0;
+     decorGroups = {};
++    // The first stage a player sees is framed at once; later stages ease in.
++    if (stageIdx < 0) Object.assign(planCur, PLANS[idx]);
++    planTarget = PLANS[idx];
+     const S = stageGroup;
+     const counterLen = [6.8, 9.4, 11.2][idx];
+     const counterDepth = idx === 2 ? 2.4 : 1.6;
++    const half = counterLen / 2;
++    const signMat = () => new THREE.MeshStandardMaterial({ map: signTexture('MOMO GHAR', 'मोमो घर'), roughness: 0.6 });
++
++    // Street: a cobbled lane with kerbs, and potted shrubs at the edges of the plan.
++    const planX = PLANS[idx].maxX;
++    const laneW = planX * 2 - 0.4;
++    floorPatch(S, tex.road, 0, 4.75, laneW, 5.7, 1.4);
++    mesh(new THREE.BoxGeometry(laneW, 0.16, 0.22), mat.plaster, 0, 0.08, 1.85, S);
++    mesh(new THREE.BoxGeometry(laneW, 0.16, 0.22), mat.plaster, 0, 0.08, 7.65, S);
++    for (const x of [-planX + 1.2, -planX / 2, planX / 2, planX - 1.2]) shrubPot(S, x, 8.2, mat);
++    shrubPot(S, -half - 2.0, 2.6, mat);
++    shrubPot(S, half + 2.0, 2.6, mat);
+ 
+     if (idx === 0) {
+-      // Brick house wall behind a tiled roof with carved windows.
++      // Brick house behind a tiled roof. Kitchen floor sits between wall and counter.
++      floorPatch(S, tex.kitchen, 0, -2.1, 12.0, 2.7, 0.8);
+       mesh(new THREE.BoxGeometry(12, 3.6, 1.0), mat.brick, 0, 1.8, -3.9, S);
+       for (const x of [-3.6, 3.6]) {
+         mesh(new THREE.BoxGeometry(1.4, 1.7, 0.1), mat.red, x, 2.0, -3.37, S, false);
+@@ -682,69 +829,97 @@ export function createWorld(canvas) {
+       mesh(new THREE.BoxGeometry(0.9, 2.2, 0.1), mat.darkWood, 0, 1.3, -3.35, S, false);
+       roofSlab(S, 13, 2.4, 3.75, -3.0, 0.28, mat.tile);
+       mesh(new THREE.BoxGeometry(12.4, 0.18, 0.2), mat.red, 0, 3.55, -3.35, S);
+-      mesh(new THREE.PlaneGeometry(3.0, 0.62), new THREE.MeshStandardMaterial({ map: signTexture('MOMO GHAR', 'मोमो घर'), roughness: 0.6 }), 0, 3.32, -3.2, S, false);
++      mesh(new THREE.PlaneGeometry(3.0, 0.62), signMat(), 0, 3.32, -3.2, S, false);
++      kitchenShelf(S, -4.6, 4.6, -3.2, 1.55, mat);
++      mesh(new THREE.BoxGeometry(1.4, 0.9, 0.7), mat.darkWood, -3.9, 0.45, -1.4, S);
++      mesh(new THREE.BoxGeometry(0.9, 0.5, 0.6), mat.metal, 3.9, 0.25, -1.5, S);
+     } else if (idx === 1) {
+-      // Two-storey Newari house with carved upper windows.
+-      mesh(new THREE.BoxGeometry(10.8, 2.4, 2.4), mat.brick, 0, 1.2, -2.6, S);
+-      mesh(new THREE.BoxGeometry(10.0, 2.2, 2.4), mat.wood, 0, 3.5, -2.4, S);
++      // Two-storey Newari house with carved upper windows and a shaded patio.
++      const bz = -4.6;
++      floorPatch(S, tex.kitchen, 0, -2.1, 10.2, 2.7, 0.8);
++      mesh(new THREE.BoxGeometry(10.8, 2.4, 2.4), mat.brick, 0, 1.2, bz, S);
++      mesh(new THREE.BoxGeometry(10.0, 2.2, 2.4), mat.wood, 0, 3.5, bz, S);
+       for (const x of [-3.2, 0, 3.2]) {
+-        mesh(new THREE.BoxGeometry(1.4, 1.7, 0.1), mat.red, x, 3.5, -1.15, S, false);
+-        mesh(new THREE.PlaneGeometry(1.2, 1.5), mat.window, x, 3.5, -1.1, S, false);
++        mesh(new THREE.BoxGeometry(1.4, 1.7, 0.1), mat.red, x, 3.5, -3.37, S, false);
++        mesh(new THREE.PlaneGeometry(1.2, 1.5), mat.window, x, 3.5, -3.3, S, false);
+       }
+-      mesh(new THREE.BoxGeometry(10.4, 0.18, 0.2), mat.red, 0, 2.4, -1.15, S);
+-      mesh(new THREE.BoxGeometry(10.4, 0.18, 0.2), mat.red, 0, 4.6, -1.15, S);
+-      roofSlab(S, 12, 3.6, 4.85, -2.5, 0.3, mat.tile);
+-      roofSlab(S, 9, 2.4, 5.7, -2.5, 0.3, mat.tile);
+-      mesh(new THREE.ConeGeometry(0.35, 0.9, 10), mat.gold, 0, 6.5, -2.5, S, false);
+-      mesh(new THREE.PlaneGeometry(3.6, 0.8), new THREE.MeshStandardMaterial({ map: signTexture('MOMO GHAR', 'मोमो घर'), roughness: 0.6 }), 0, 4.45, -1.1, S, false);
++      mesh(new THREE.BoxGeometry(10.4, 0.18, 0.2), mat.red, 0, 2.4, -3.37, S);
++      mesh(new THREE.BoxGeometry(10.4, 0.18, 0.2), mat.red, 0, 4.6, -3.37, S);
++      roofSlab(S, 12, 3.6, 4.85, bz, 0.3, mat.tile);
++      roofSlab(S, 9, 2.4, 5.7, bz, 0.3, mat.tile);
++      mesh(new THREE.ConeGeometry(0.35, 0.9, 10), mat.gold, 0, 6.5, bz, S, false);
++      mesh(new THREE.PlaneGeometry(3.6, 0.8), signMat(), 0, 4.45, -3.3, S, false);
++      kitchenShelf(S, -4.4, 4.4, -3.2, 1.2, mat);
++      mesh(new THREE.BoxGeometry(1.4, 0.9, 0.7), mat.darkWood, -4.0, 0.45, -1.4, S);
++      // Patio on the right with two tables.
++      floorPatch(S, tex.wood, 8.4, -0.7, 4.4, 4.6, 1.2);
++      diningTable(S, 7.4, -1.6, mat);
++      diningTable(S, 9.4, 0.2, mat);
+     } else {
+-      // Three-tier Newari pagoda restaurant with a stupa in the courtyard.
++      // Three-tier Newari pagoda restaurant, a stupa courtyard and a dining hall.
++      const bz = -4.6;
++      floorPatch(S, tex.kitchen, 0, -2.2, 11.0, 1.9, 0.8);
+       const tiers = [
+         { w: 12.6, h: 2.4, y: 1.2, d: 3.0, mat: mat.brick },
+         { w: 9.6, h: 2.2, y: 3.5, d: 3.0, mat: mat.wood },
+         { w: 6.6, h: 2.0, y: 5.6, d: 2.6, mat: mat.wood },
+       ];
+-      for (const t of tiers) mesh(new THREE.BoxGeometry(t.w, t.h, t.d), t.mat, 0, t.y, -4.2, S);
++      for (const t of tiers) mesh(new THREE.BoxGeometry(t.w, t.h, t.d), t.mat, 0, t.y, bz, S);
+       const tierRoofs = [2.45, 4.65, 6.65];
+-      tierRoofs.forEach((y, i) => roofSlab(S, tiers[i].w + 1.6, tiers[i].d + 1.6, y, -4.2, 0.3, mat.tile));
++      tierRoofs.forEach((y, i) => roofSlab(S, tiers[i].w + 1.6, tiers[i].d + 1.6, y, bz, 0.3, mat.tile));
+       for (const x of [-4.5, -1.5, 1.5, 4.5]) {
+-        mesh(new THREE.BoxGeometry(1.4, 1.5, 0.1), mat.red, x, 1.3, -2.66, S, false);
+-        mesh(new THREE.PlaneGeometry(1.2, 1.3), mat.window, x, 1.3, -2.6, S, false);
++        mesh(new THREE.BoxGeometry(1.4, 1.5, 0.1), mat.red, x, 1.3, -3.07, S, false);
++        mesh(new THREE.PlaneGeometry(1.2, 1.3), mat.window, x, 1.3, -3.03, S, false);
+       }
+       for (const x of [-3.2, 3.2]) {
+-        mesh(new THREE.BoxGeometry(1.4, 1.5, 0.1), mat.red, x, 3.5, -2.66, S, false);
+-        mesh(new THREE.PlaneGeometry(1.2, 1.3), mat.window, x, 3.5, -2.6, S, false);
++        mesh(new THREE.BoxGeometry(1.4, 1.5, 0.1), mat.red, x, 3.5, -3.07, S, false);
++        mesh(new THREE.PlaneGeometry(1.2, 1.3), mat.window, x, 3.5, -3.03, S, false);
+       }
+       for (const x of [-1.8, 1.8]) {
+-        mesh(new THREE.BoxGeometry(1.4, 1.4, 0.1), mat.red, x, 5.6, -2.86, S, false);
+-        mesh(new THREE.PlaneGeometry(1.2, 1.2), mat.window, x, 5.6, -2.8, S, false);
++        mesh(new THREE.BoxGeometry(1.4, 1.4, 0.1), mat.red, x, 5.6, -3.27, S, false);
++        mesh(new THREE.PlaneGeometry(1.2, 1.2), mat.window, x, 5.6, -3.23, S, false);
+       }
+-      mesh(new THREE.PlaneGeometry(3.8, 0.8), new THREE.MeshStandardMaterial({ map: signTexture('MOMO GHAR', 'मोमो घर'), roughness: 0.6 }), 0, 3.5, -2.6, S, false);
+-      mesh(new THREE.ConeGeometry(0.4, 1.0, 10), mat.gold, 0, 7.5, -4.2, S, false);
+-      addStupa(S, 7.6, -6.5, 1.5, { white: mat.plaster, eyes: mat.eyesMat, gold: mat.gold });
++      mesh(new THREE.PlaneGeometry(3.8, 0.8), signMat(), 0, 3.5, -3.03, S, false);
++      mesh(new THREE.ConeGeometry(0.4, 1.0, 10), mat.gold, 0, 7.5, bz, S, false);
++      addStupa(S, -8.9, -6.6, 1.4, { white: mat.plaster, eyes: mat.eyesMat, gold: mat.gold });
++      // Dining hall to the right of the pagoda, with four tables.
++      floorPatch(S, tex.wood, 9.4, -4.0, 4.0, 5.6, 1.2);
++      diningTable(S, 8.4, -5.4, mat);
++      diningTable(S, 10.4, -5.4, mat);
++      diningTable(S, 8.4, -2.5, mat);
++      diningTable(S, 10.4, -2.5, mat);
+     }
+ 
+     // Counter: brick body with a timber top.
+     mesh(new THREE.BoxGeometry(counterLen, COUNTER_H, counterDepth), mat.brick, 0, COUNTER_H / 2, 0, S);
+     mesh(new THREE.BoxGeometry(counterLen + 0.1, 0.08, counterDepth + 0.1), mat.counterTop, 0, COUNTER_H + 0.04, 0, S);
+ 
+-    // Canopy poles and striped tarp over the counter.
+-    const poleX = counterLen / 2 - 0.4;
+-    const tarp = idx === 1 ? mat.tarpB : mat.tarpA;
++    // Canopy: a flat striped awning held up by four poles. It sits high and
++    // stops short of the steamers' front edge so the baskets stay visible.
++    // A front strip over the counter edge, so the kitchen behind stays in view.
++    const tarpZ0 = counterDepth / 2 - 0.9;
++    const tarpZ1 = counterDepth / 2 + 0.5;
++    const poleX = half - 0.4;
+     for (const x of [-poleX, poleX]) {
+-      for (const z of [-counterDepth / 2 - 0.05, counterDepth / 2 + 0.7]) {
+-        mesh(new THREE.CylinderGeometry(0.07, 0.08, 3.0, 8), mat.bamboo, x, 1.5, z, S);
++      for (const z of [tarpZ0 + 0.1, tarpZ1 - 0.1]) {
++        mesh(new THREE.CylinderGeometry(0.07, 0.08, 3.2, 8), mat.bamboo, x, 1.6, z, S);
+       }
+     }
+-    const tarpMesh = new THREE.Mesh(new THREE.PlaneGeometry(counterLen + 0.8, 2.6), tarp);
+-    tarpMesh.position.set(0, 2.7, 0.35);
+-    tarpMesh.rotation.x = -Math.PI / 2 + 0.2;
++    // Seen from overhead the awning would hide the kitchen and steamers under it,
++    // so it is drawn slightly see-through (a cutaway), keeping the striped look.
++    const tarpSrc = idx === 1 ? mat.tarpB : mat.tarpA;
++    const tarpMat = tarpSrc.clone();
++    tarpMat.transparent = true;
++    tarpMat.opacity = 0.72;
++    const tarpMesh = new THREE.Mesh(new THREE.PlaneGeometry(counterLen + 0.8, tarpZ1 - tarpZ0), tarpMat);
++    tarpMesh.rotation.x = -Math.PI / 2;
++    tarpMesh.position.set(0, 3.2, (tarpZ0 + tarpZ1) / 2);
+     tarpMesh.castShadow = true;
+     S.add(tarpMesh);
+ 
+     // Street props: gas cylinder and a stack of steamer baskets.
+-    mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.9, 14), mat.gas, counterLen / 2 + 1.1, 0.45, 0.5, S);
+-    for (let k = 0; k < 3; k++) mesh(new THREE.CylinderGeometry(0.42, 0.38, 0.3, 14), mat.bamboo, -counterLen / 2 - 0.9, 0.15 + k * 0.3, 1.6, S);
++    mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.9, 14), mat.gas, half + 1.0, 0.45, 0.5, S);
++    for (let k = 0; k < 3; k++) mesh(new THREE.CylinderGeometry(0.42, 0.38, 0.3, 14), mat.bamboo, -half - 0.9, 0.15 + k * 0.3, 1.6, S);
+ 
+     // Lanterns hang from the canopy (base set) and extra ones with decor.
+     const lanternCount = [1, 2, 3][idx];
+@@ -758,7 +933,7 @@ export function createWorld(canvas) {
+     // Prayer flags: base string on every stage.
+     const flagsBase = new THREE.Group();
+     S.add(flagsBase);
+-    const spanX = counterLen / 2 + 0.6;
++    const spanX = half + 0.6;
+     addFlagString(flagsBase, flagList, [-spanX, 4.1, 1.1], [spanX, 4.3, 1.1], 0.25, 9 + idx * 2, mat.flags);
+ 
+     // Decor add-ons (visible once purchased).
+@@ -769,10 +944,10 @@ export function createWorld(canvas) {
+     addFlagString(flagsExtra, flagList, [-spanX - 1, 4.4, 1.0], [spanX + 1, 4.6, 1.0], 0.5, 14, mat.flags);
+     addFlagString(flagsExtra, flagList, [-spanX - 0.5, 2.9, -4.5], [-spanX + 3, 5.0, -4.5], 0.4, 8, mat.flags);
+     addFlagString(flagsExtra, flagList, [spanX - 1, 5.0, -4.5], [spanX + 2, 3.5, -2.0], 0.4, 8, mat.flags);
+-    // Marigold swags hang from the front edge of the tarp.
++    // Marigold swags hang from the front edge of the canopy.
+     addGarland(garland, [-poleX, 2.42, 1.95], [poleX, 2.42, 1.95], 0.35, 26, mat.marigold);
+     for (let k = 0; k < 4; k++) {
+-      addLantern(lanternsExtra, -counterLen / 2 + 0.5 + k * ((counterLen - 1) / 3), 1.7 + (k % 2) * 0.5, 2.7, glowParts);
++      addLantern(lanternsExtra, -half + 0.5 + k * ((counterLen - 1) / 3), 1.7 + (k % 2) * 0.5, 2.7, glowParts);
+     }
+     decorGroups = { flags: flagsExtra, garland, lanterns: lanternsExtra };
+ 
+@@ -798,6 +973,13 @@ export function createWorld(canvas) {
+       topi: r() < 0.35,
+     }, mat);
+     h.root.userData.pick = { type: 'customer', id: c.id };
++    const blob = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 1.2), new THREE.MeshBasicMaterial({ map: tex.blob, transparent: true, depthWrite: false }));
++    blob.rotation.x = -Math.PI / 2;
++    blob.position.y = 0.01;
++    h.root.add(blob);
++    const hitArea = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 2.2, 8), hitMat);
++    hitArea.position.y = 1.1;
++    h.root.add(hitArea);
+     h.root.position.set(-13, 0, 4.2 + r() * 1.2);
+     h.root.rotation.y = Math.PI / 2;
+     h.id = c.id;
+@@ -809,7 +991,8 @@ export function createWorld(canvas) {
+ 
+   function queueSlot(i) {
+     const col = i % 5, row = Math.floor(i / 5);
+-    return new THREE.Vector3((col - 2) * 1.2 + (row % 2 ? 0.5 : 0), 0, 3.0 + row * 1.35);
++    // Spaced out so each order card has room to read from overhead.
++    return new THREE.Vector3((col - 2) * 1.9 + (row % 2 ? 0.9 : 0), 0, 3.0 + row * 1.9);
+   }
+ 
+   function removeCustomer(id) {
+@@ -841,29 +1024,103 @@ export function createWorld(canvas) {
+   }
+   buildStaff();
+ 
+-  // ----- public API -----
++  // ----- camera: overhead 3/4 view that always frames the whole floor plan -----
++  // The camera sits at ELEV above the plan and moves its distance so the plan's
++  // bounding box fits the rectangle left free by the HUD and the side or bottom
++  // panel. Zoom, pan and yaw are relative to that fit.
+   const raycaster = new THREE.Raycaster();
+   const ndc = new THREE.Vector2();
+-  let size = { w: 1, h: 1 };
+   const tmp = new THREE.Vector3();
++  let size = { w: 1, h: 1 };
++  let free = { l: 0, t: 0, r: 1, b: 1 };
++  const M = 16; // px kept clear between the framed plan and the free rectangle edge
++
++  function placeCamera(cx, cz, dist) {
++    const ce = Math.cos(ELEV), se = Math.sin(ELEV);
++    camera.position.set(cx + Math.sin(cam.yaw) * ce * dist, se * dist, cz + Math.cos(cam.yaw) * ce * dist);
++    camera.lookAt(cx, 0, cz);
++    camera.updateMatrixWorld();
++  }
+ 
+-  // insets are the screen pixels covered by UI on the right, bottom and top.
+-  function setSize(w, h, insetR = 0, insetB = 0, insetT = 0) {
++  // True when every corner of the plan's box projects inside the free rectangle.
++  function fits(cx, cz, dist, p) {
++    placeCamera(cx, cz, dist);
++    for (const x of [p.minX, p.maxX]) {
++      for (const z of [p.minZ, p.maxZ]) {
++        for (const y of [0, p.maxY]) {
++          tmp.set(x, y, z).project(camera);
++          if (tmp.z > 1) return false;
++          const px = ((tmp.x + 1) / 2) * size.w;
++          const py = ((1 - tmp.y) / 2) * size.h;
++          if (px < free.l + M || px > free.r - M || py < free.t + M || py > free.b - M) return false;
++        }
++      }
++    }
++    return true;
++  }
++
++  function fitDistance(cx, cz, p) {
++    let lo = 2, hi = 160;
++    for (let i = 0; i < 26; i++) {
++      const mid = (lo + hi) / 2;
++      if (fits(cx, cz, mid, p)) hi = mid; else lo = mid;
++    }
++    return hi;
++  }
++
++  function updateCamera(dt) {
++    const k = Math.min(1, dt * 4);
++    for (const key of ['minX', 'maxX', 'minZ', 'maxZ', 'maxY']) planCur[key] += (planTarget[key] - planCur[key]) * k;
++    cam.yaw += (cam.dragYaw - cam.yaw) * Math.min(1, dt * 6);
++    cam.zoom += (cam.zoomTarget - cam.zoom) * Math.min(1, dt * 8);
++    const cx0 = (planCur.minX + planCur.maxX) / 2;
++    const cz0 = (planCur.minZ + planCur.maxZ) / 2;
++    cam.dist = fitDistance(cx0, cz0, planCur) / cam.zoom;
++    const padX = (planCur.maxX - planCur.minX) / 2 + 2;
++    const padZ = (planCur.maxZ - planCur.minZ) / 2 + 2;
++    cam.pan.x = clamp(cam.pan.x, -padX, padX);
++    cam.pan.y = clamp(cam.pan.y, -padZ, padZ);
++    placeCamera(cx0 + cam.pan.x, cz0 + cam.pan.y, cam.dist);
++  }
++
++  // rect is the free screen rectangle in CSS px: { l, t, r, b }.
++  function setSize(w, h, rect) {
+     size = { w, h };
++    free = { ...rect };
+     renderer.setSize(w, h, false);
+     camera.aspect = w / h;
+-    const portrait = w / h < 0.9;
+-    cam.dist = portrait ? 19 : 12.5;
+-    cam.height = portrait ? 4.6 : 3.6;
+-    const baseY = portrait ? 2.4 : 3.0;
+-    const visH = 2 * cam.dist * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+-    const visW = visH * camera.aspect;
+-    // Move the look point so the stall is centred in the area the UI leaves free.
+-    const freeX = (w - insetR) / 2;
+-    const freeY = (insetT + (h - insetB)) / 2;
+-    cam.look.set(((w / 2 - freeX) / w) * visW, baseY - ((h / 2 - freeY) / h) * visH, 0);
+-    camera.updateProjectionMatrix();
+-    steamMat.uniforms.uScale.value = h / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)));
++    // Shift the optical centre into the middle of the free rectangle, so the
++    // plan is framed in the space the panels leave open.
++    const cx = (free.l + free.r) / 2;
++    const cy = (free.t + free.b) / 2;
++    camera.setViewOffset(w, h, w / 2 - cx, h / 2 - cy, w, h);
++    steamMat.uniforms.uScale.value = h / (2 * Math.tan(THREE.MathUtils.degToRad(FOV / 2)));
++  }
++
++  // Pan in screen pixels: the ground moves with the pointer.
++  function panBy(dx, dy) {
++    const mpp = (2 * cam.dist * Math.tan(THREE.MathUtils.degToRad(FOV / 2))) / size.h;
++    const s = Math.sin(cam.yaw), c = Math.cos(cam.yaw), k = mpp / Math.sin(ELEV);
++    cam.pan.x += -c * dx * mpp - s * dy * k;
++    cam.pan.y += s * dx * mpp - c * dy * k;
++  }
++
++  function zoomBy(f) {
++    cam.zoomTarget = clamp(cam.zoomTarget * f, 0.8, 3.5);
++  }
++
++  function resetView() {
++    cam.zoomTarget = 1;
++    cam.pan.set(0, 0);
++    cam.dragYaw = 0;
++  }
++
++  function dragYaw(dx) {
++    cam.dragYaw = clamp(cam.dragYaw + dx * 0.005, -0.6, 0.6);
++  }
++
++  function resetYaw() {
++    cam.dragYaw = 0;
+   }
+ 
+   function setStage(s) {
+@@ -1001,10 +1258,7 @@ export function createWorld(canvas) {
+         h.arms[1].rotation.x = -1.2 + Math.sin(time * 16) * 0.5;
+       }
+     }
+-    // Gentle camera sway toward the drag offset.
+-    cam.yaw += (cam.dragYaw - cam.yaw) * Math.min(1, dt * 6);
+-    camera.position.set(Math.sin(cam.yaw) * cam.dist + cam.look.x, cam.height, Math.cos(cam.yaw) * cam.dist);
+-    camera.lookAt(cam.look);
++    updateCamera(dt);
+     // Lantern glow flicker.
+     stallGlow.intensity = (s.decor.lanterns ? 12 : 9) * (0.96 + Math.sin(time * 7.3) * 0.02);
+   }
+@@ -1025,7 +1279,7 @@ export function createWorld(canvas) {
+   function customerScreen(id) {
+     const h = custs.get(id);
+     if (!h || h.exiting) return null;
+-    tmp.set(h.root.position.x, 2.6, h.root.position.z);
++    tmp.set(h.root.position.x, 2.7, h.root.position.z);
+     return toScreen(tmp);
+   }
+ 
+@@ -1053,18 +1307,10 @@ export function createWorld(canvas) {
+     return null;
+   }
+ 
+-  function dragYaw(dx) {
+-    cam.dragYaw = clamp(cam.dragYaw + dx * 0.004, -0.45, 0.45);
+-  }
+-
+-  function resetYaw() {
+-    cam.dragYaw = 0;
+-  }
+-
+   return {
+     renderer, scene, camera,
+     setSize, setStage, syncSlots, handleEvent, update, render,
+-    customerScreen, slotScreen, pick, dragYaw, resetYaw,
++    customerScreen, slotScreen, pick, dragYaw, resetYaw, panBy, zoomBy, resetView,
+     get slotCount() { return slots.length; },
+     dispose() {
+       renderer.dispose();

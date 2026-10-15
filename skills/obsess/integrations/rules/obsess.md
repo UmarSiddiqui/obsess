@@ -18,6 +18,6 @@ If the full skill is installed (`.agents/skills/obsess/SKILL.md`, `.claude/skill
 6. **Stop on purpose.** Stop when the goal is checked, after 2 polish attempts in a row without a supported gain, at the budget, or when no useful experiment remains. No edit quota: "already good" is a valid result.
 7. **Report honestly.** What changed, what was actually checked, what wasn't verified, attempts used and why you stopped. Never claim perfection, unmeasured smoothness or invented percentages.
 
-Flags: `--lite`, `--mode polish|optimise`, `--iterations N`, `--minutes N`, `--focus "objective"`, `--scope "path1,path2"`. `find <scope>` recommends one target without editing.
+Flags: `--lite`, `--mode polish|optimise`, `--iterations N`, `--minutes N`, `--focus "objective"`, `--scope "path1,path2"`. `find <scope>` recommends one target without editing. On an unknown flag, an invalid or unlimited budget, or a conflict, stop before editing and name the valid form; don't substitute a default.
 
 Host policy and repository rules always win. Don't deploy, publish, weaken tests or expose secrets.

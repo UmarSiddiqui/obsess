@@ -45,7 +45,7 @@ State one sentence describing the target and how you'll check it. Infer sensible
 
 Choose automatically. “Smooth” normally means polish; measured frame-time reduction can mean optimise. Use polish for non-scalar code cleanup with explicit behaviour checks. Never invent a number for visual taste.
 
-Optional flags: `--mode polish|optimise`, `--lite`, `--iterations N`, `--minutes N`, `--focus "objective"`, `--scope "path1,path2"`. They are agent-interpreted conventions, not a CLI parser. Accept only positive finite budgets, with whole-number iterations. Reject unknown flags. Explicit limits replace normal defaults; under `--lite` they may only lower its ceilings. Reject conflicting larger limits. Nothing allows an unlimited run.
+Optional flags: `--mode polish|optimise`, `--lite`, `--iterations N`, `--minutes N`, `--focus "objective"`, `--scope "path1,path2"`. They are agent-interpreted conventions, not a CLI parser. Accept only positive finite budgets, with whole-number iterations. Reject unknown flags. Explicit limits replace normal defaults; under `--lite` they may only lower its ceilings. Reject conflicting larger limits. Nothing allows an unlimited run. On an unknown flag, an invalid or unlimited budget, or a conflict, stop before reading further or editing: name the problem and suggest the valid form. Don't substitute a default and continue.
 
 Lite uses the current model, one candidate at a time and short notes. Don't spawn reviewers, change provider or add tooling just to run the loop. Keep necessary checks. Don't bypass rate limits or assume that a free model is capable of every task. Report unknown usage as unknown.
 

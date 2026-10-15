@@ -1,0 +1,31 @@
+.switch {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: var(--switch-off);
+  cursor: pointer;
+}
+
+.switch.on {
+  background: var(--switch-on);
+  transition: background 0.25s;
+}
+
+.thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.switch.on .thumb {
+  left: 22px;
+  transition: left 0.25s ease;
+}

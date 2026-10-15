@@ -1,0 +1,12 @@
+Build a browser game in this folder: a Nepali momo stall tycoon.
+
+You start with a small momo stall on a Kathmandu street. Customers walk up and line up. You serve them momos and get paid in rupees. Spend the money on upgrades (faster steamers, more steamer baskets, better recipes, more menu items such as jhol momo, C-momo and fried momo), hire staff who cook and serve automatically, and expand from a street stall to a small shop to a busy restaurant. Similar idea to pizza-shop tycoon games.
+
+Visuals must look stunning and unmistakably Nepali: 3D with Three.js (prayer flags, temple/pagoda architecture, Newari brick and carved wooden windows, Himalayan backdrop, warm lighting, steam from the steamers, animated customers). Polished UI with clear money, upgrade and hiring panels.
+
+Constraints:
+- Static files only, with index.html as the entry point. No build step, no npm install.
+- Load Three.js from https://cdn.jsdelivr.net/npm/three@0.160.0/ (ES module build with an importmap is fine). No other external network resources; draw everything with code (no image downloads).
+- It must run by opening index.html from a static web server and be playable with a mouse on desktop and touch on mobile.
+- Save progress in localStorage.
+- Work autonomously: don't ask questions, make reasonable choices and finish the game.

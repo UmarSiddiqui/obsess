@@ -1,0 +1,771 @@
+{
+  "model": "claude-haiku-5-5",
+  "records": [
+    {
+      "id": "toggle-baseline-1",
+      "task": "toggle",
+      "condition": "baseline",
+      "rep": 1,
+      "fixture": "toggle",
+      "prompt": "The Email notifications toggle in index.html: make its transition super smooth.",
+      "agent": {
+        "final_text": "The Email notifications toggle now animates in both directions. The change is all in `src/toggle.css`; I didn't touch `index.html` or `toggle.js`.\n\n**What was wrong:** the transitions were declared on the `.on` state. A CSS transition uses the rules of the state you're moving *into*, so turning the switch on animated, but turning it off jumped instantly. The thumb also animated `left`, which forces a layout pass on every frame.\n\n**What changed:**\n- The background-color transition now lives on the base `.switch`, so it runs both ways (0.25s ease).\n- The thumb moves with `transform: translateX(20px)` instead of `left`, which stays on the compositor and is smoother.\n- The thumb's transition is on the base `.thumb` for the same both-directions reason, using a standard ease-in-out curve.\n- Added a `prefers-reduced-motion` rule that disables both transitions for users who have reduced motion turned on.\n\nI haven't rendered the page in a browser, so I verified the change by reading the CSS rather than by watching it run. Worth a quick click-through in a browser to confirm the feel. I also haven't committed anything.",
+        "cost_usd": 0.0066180200000000005,
+        "turns": 5,
+        "seconds": 29.4,
+        "timed_out": false,
+        "tool_calls": 4,
+        "browser_checks": 0,
+        "skill_available": false
+      },
+      "grade": {
+        "behaviour": {
+          "travel_px": 20,
+          "state_on": "true",
+          "on_animated": true,
+          "on_max_jump_px": 3.5699462890625,
+          "state_off": "false",
+          "off_max_jump_px": 3.591064453125,
+          "off_animated": true,
+          "off_end_correct": true,
+          "reverse_max_jump_px": 3.59088134765625,
+          "reverse_end_correct": true,
+          "state_after_reverse": "false",
+          "no_snap_off": true,
+          "no_snap_reverse": true,
+          "keyboard_space_toggles": true,
+          "role_switch": true,
+          "is_button": true,
+          "uses_transform": true,
+          "reduced_motion_settles_within_120ms": true,
+          "pass": true
+        },
+        "scope": {
+          "modified": [
+            "src/toggle.css"
+          ],
+          "added": [],
+          "outside_allowed": [],
+          "protected_touched": []
+        },
+        "scope_ok": true,
+        "pass": true
+      }
+    },
+    {
+      "id": "toggle-baseline-2",
+      "task": "toggle",
+      "condition": "baseline",
+      "rep": 2,
+      "fixture": "toggle",
+      "prompt": "The Email notifications toggle in index.html: make its transition super smooth.",
+      "agent": {
+        "final_text": "I made the Email notifications toggle animate smoothly in both directions. The change is in `src/toggle.css`; `index.html` and `toggle.js` are unchanged.\n\n**The cause:** the transitions were declared only on the `.on` state. A transition uses the style of the state being entered, so turning the switch on animated, but turning it off snapped instantly.\n\n**What changed:**\n- **Both directions animate.** The background and thumb transitions now sit on the base `.switch` and `.thumb` rules.\n- **Thumb uses `transform`** (`translateX(20px)`) instead of `left`. That avoids layout work and keeps the motion steadier. The travel distance is the same as before: 20px.\n- **Easing:** a standard ease-in-out curve (`cubic-bezier(0.4, 0, 0.2, 1)`) at 0.25s, replacing the linear-feeling `ease` and the default `background` timing.\n- **Reduced motion:** `prefers-reduced-motion: reduce` turns the transitions off for users who ask for less motion.\n\nI haven't run it in a browser; I checked the change by reading the CSS and the diff. Opening `index.html` and clicking the toggle a few times in each direction is the quick way to confirm it.",
+        "cost_usd": 0.013950480000000005,
+        "turns": 7,
+        "seconds": 34.5,
+        "timed_out": false,
+        "tool_calls": 6,
+        "browser_checks": 0,
+        "skill_available": false
+      },
+      "grade": {
+        "behaviour": {
+          "travel_px": 20,
+          "state_on": "true",
+          "on_animated": true,
+          "on_max_jump_px": 3.590576171875,
+          "state_off": "false",
+          "off_max_jump_px": 3.59100341796875,
+          "off_animated": true,
+          "off_end_correct": true,
+          "reverse_max_jump_px": 3.57000732421875,
+          "reverse_end_correct": true,
+          "state_after_reverse": "false",
+          "no_snap_off": true,
+          "no_snap_reverse": true,
+          "keyboard_space_toggles": true,
+          "role_switch": true,
+          "is_button": true,
+          "uses_transform": true,
+          "reduced_motion_settles_within_120ms": true,
+          "pass": true
+        },
+        "scope": {
+          "modified": [
+            "src/toggle.css"
+          ],
+          "added": [],
+          "outside_allowed": [],
+          "protected_touched": []
+        },
+        "scope_ok": true,
+        "pass": true
+      }
+    },
+    {
+      "id": "toggle-obsess-1",
+      "task": "toggle",
+      "condition": "obsess",
+      "rep": 1,
+      "fixture": "toggle",
+      "prompt": "/obsess over the Email notifications toggle in index.html and make the transition super smooth --lite",
+      "agent": {
+        "final_text": "The Email notifications toggle now animates in both directions. Before, it animated OFF\u2192ON and snapped ON\u2192OFF.\n\n**The defect:** In `src/toggle.css`, the transitions lived only on the `.on` state. Turning the toggle on picked up the transition, but turning it off dropped it, so the thumb and track jumped back.\n\n**What I changed (`src/toggle.css` only):**\n- Moved the track's `background-color` transition onto the base `.switch` so both directions use it.\n- Moved the thumb's transition onto the base `.thumb` and switched the motion from `left` to `transform: translateX(20px)`. Transform animates on the compositor without layout work on each frame.\n- Added a `prefers-reduced-motion: reduce` rule that turns the transitions off. This is my addition, not something you asked for. Remove it if you don't want it.\n\n**How I checked it:** I drove `index.html` in Chromium through Playwright and sampled the thumb and track on every animation frame.\n\n| | Frames with distinct states | Settled thumb position |\n|---|---|---|\n| OFF\u2192ON, before | 16 | 22px |\n| ON\u2192OFF, before | 2 (snap) | 2px |\n| OFF\u2192ON, after | 17 | 22px |\n| ON\u2192OFF, after | 17 | 2px |\n| Reduced motion, after | 2 (instant, both directions) | 22px / 2px |\n\nThe settled positions match the original geometry exactly. `aria-checked` still flips correctly.\n\n**Limits:** These checks show the transition runs in both directions with the same curve. They don't show that it looks smooth to a person; that would need a visual review or a recording. This was a lite run: one attempt, and the first candidate met the goal, so I stopped there. I didn't write `.obsess/` run notes. The change is uncommitted in the working tree; `git diff` shows it.",
+        "cost_usd": 0.013144460000000002,
+        "turns": 8,
+        "seconds": 66.4,
+        "timed_out": false,
+        "tool_calls": 7,
+        "browser_checks": 1,
+        "skill_available": true
+      },
+      "grade": {
+        "behaviour": {
+          "travel_px": 20,
+          "state_on": "true",
+          "on_animated": true,
+          "on_max_jump_px": 2.97772216796875,
+          "state_off": "false",
+          "off_max_jump_px": 2.99639892578125,
+          "off_animated": true,
+          "off_end_correct": true,
+          "reverse_max_jump_px": 2.99688720703125,
+          "reverse_end_correct": true,
+          "state_after_reverse": "false",
+          "no_snap_off": true,
+          "no_snap_reverse": true,
+          "keyboard_space_toggles": true,
+          "role_switch": true,
+          "is_button": true,
+          "uses_transform": true,
+          "reduced_motion_settles_within_120ms": true,
+          "pass": true
+        },
+        "scope": {
+          "modified": [
+            "src/toggle.css"
+          ],
+          "added": [],
+          "outside_allowed": [],
+          "protected_touched": []
+        },
+        "scope_ok": true,
+        "pass": true
+      }
+    },
+    {
+      "id": "toggle-obsess-2",
+      "task": "toggle",
+      "condition": "obsess",
+      "rep": 2,
+      "fixture": "toggle",
+      "prompt": "/obsess over the Email notifications toggle in index.html and make the transition super smooth --lite",
+      "agent": {
+        "final_text": "The Email notifications toggle now animates smoothly in both directions. Before, turning it off snapped instantly.\n\n**What was wrong:** The transitions were declared only on `.switch.on` and `.switch.on .thumb`. A transition uses the style of the state it's moving *into*, so turning on animated and turning off did not. Measured in Chromium, OFF\u2192ON produced 16 intermediate frames and ON\u2192OFF produced none.\n\n**What I changed (one file, `src/toggle.css`):**\n- Moved the background transition onto the base `.switch`, so both directions use it.\n- Moved the thumb transition onto the base `.thumb`, so both directions use it.\n- Switched the thumb's movement from `left` to `transform: translateX(20px)`. This avoids a layout pass on every frame. The end position is unchanged (2px \u2192 22px).\n- Added a `prefers-reduced-motion: reduce` guard that turns the transitions off.\n\n`index.html` and `toggle.js` are untouched.\n\n**Verification (Playwright against `index.html`, sampled every frame):**\n- ON\u2192OFF now produces 15 intermediate frames, up from 2 (snapped). OFF\u2192ON still animates.\n- Final colours and thumb positions match the original exactly.\n- With reduced motion on, the transition duration is 0s and the toggle still ends in the correct state.\n- Clicking again mid-transition settles on the correct state (`aria-checked=\"false\"`, thumb at rest).\n\n**Stop reason:** The first attempt met the goal, so I did not use the second. I haven't checked the visual look by eye or on a real device, so \"smooth\" is verified for timing and motion paths, not perceived feel. Probe scripts are in the scratchpad, not the repo. Nothing is committed.",
+        "cost_usd": 0.018225899999999996,
+        "turns": 9,
+        "seconds": 62.1,
+        "timed_out": false,
+        "tool_calls": 8,
+        "browser_checks": 0,
+        "skill_available": true
+      },
+      "grade": {
+        "behaviour": {
+          "travel_px": 20,
+          "state_on": "true",
+          "on_animated": true,
+          "on_max_jump_px": 2.9959716796875,
+          "state_off": "false",
+          "off_max_jump_px": 2.9788818359375,
+          "off_animated": true,
+          "off_end_correct": true,
+          "reverse_max_jump_px": 2.97821044921875,
+          "reverse_end_correct": true,
+          "state_after_reverse": "false",
+          "no_snap_off": true,
+          "no_snap_reverse": true,
+          "keyboard_space_toggles": true,
+          "role_switch": true,
+          "is_button": true,
+          "uses_transform": true,
+          "reduced_motion_settles_within_120ms": true,
+          "pass": true
+        },
+        "scope": {
+          "modified": [
+            "src/toggle.css"
+          ],
+          "added": [],
+          "outside_allowed": [],
+          "protected_touched": []
+        },
+        "scope_ok": true,
+        "pass": true
+      }
+    },
+    {
+      "id": "button-baseline-1",
+      "task": "button",
+      "condition": "baseline",
+      "rep": 1,
+      "fixture": "button",
+      "prompt": "The Download invoice button in index.html clips on narrow screens. Fix its responsive behaviour.",
+      "agent": {
+        "final_text": "I fixed the clipping in `src/toolbar.css`. The button was clipping because its grid column was narrower than the button. I couldn't render the page to confirm, because the headless browser download failed in this sandbox.\n\n**Cause:** The toolbar's third column was a fixed 200px (104px under 480px). The button has `white-space: nowrap` and 24px side padding, so \"Download invoice\" needs roughly 200\u2013215px. `.card` has `overflow: hidden`, so the overflow was cut off. This is an estimate from the CSS, not a measurement.\n\n**Changes:**\n- **Desktop:** the actions column is now `auto`, so it sizes to the button. The search field takes the remaining space (`minmax(0, 1fr)`).\n- **Phone (\u2264480px):** the toolbar becomes two equal columns. The search and status filter share the first row, and the actions wrapper spans the full width with a full-width button.\n\nI chose to stack the button on phones rather than shrink the search field, which would have left it only a few pixels wide at 360px. If you'd rather keep the button inline on phones, the other option is to let the toolbar wrap onto two rows.\n\nPlease check it at 360px and 768px. The changed file is `<scratch>/haiku/work/button-baseline-1/src/toolbar.css`. I have not committed anything.",
+        "cost_usd": 0.01583842,
+        "turns": 10,
+        "seconds": 91.2,
+        "timed_out": false,
+        "tool_calls": 9,
+        "browser_checks": 3,
+        "skill_available": false
+      },
+      "grade": {
+        "behaviour": {
+          "viewports": {
+            "320": {
+              "tag": "BUTTON",
+              "text": "Download invoice",
+              "font_px": 16,
+              "inside_card": true,
+              "label_fits": true,
+              "not_overflowing_cell": true,
+              "visible": true,
+              "search_visible": true,
+              "filter_visible": true,
+              "height": 40,
+              "page_hscroll": false,
+              "save": {
+                "w": 85,
+                "h": 40,
+                "pad": "24px",
+                "font": "16px",
+                "bg": "rgb(37, 99, 235)"
+              },
+              "pass": true
+            },
+            "390": {
+              "tag": "BUTTON",
+              "text": "Download invoice",
+              "font_px": 16,
+              "inside_card": true,
+              "label_fits": true,
+              "not_overflowing_cell": true,
+              "visible": true,
+              "search_visible": true,
+              "filter_visible": true,
+              "height": 40,
+              "page_hscroll": false,
+              "save": {
+                "w": 85,
+                "h": 40,
+                "pad": "24px",
+                "font": "16px",
+                "bg": "rgb(37, 99, 235)"
+              },
+              "pass": true
+            },
+            "1280": {
+              "tag": "BUTTON",
+              "text": "Download invoice",
+              "font_px": 16,
+              "inside_card": true,
+              "label_fits": true,
+              "not_overflowing_cell": true,
+              "visible": true,
+              "search_visible": true,
+              "filter_visible": true,
+              "height": 40,
+              "page_hscroll": false,
+              "save": {
+                "w": 85,
+                "h": 40,
+                "pad": "24px",
+                "font": "16px",
+                "bg": "rgb(37, 99, 235)"
+              },
+              "pass": true
+            }
+          },
+          "pass": true,
+          "save_button_unchanged": true
+        },
+        "scope": {
+          "modified": [
+            "src/toolbar.css"
+          ],
+          "added": [],
+          "outside_allowed": [],
+          "protected_touched": []
+        },
+        "scope_ok": true,
+        "pass": true
+      }
+    },
+    {
+      "id": "button-baseline-2",
+      "task": "button",
+      "condition": "baseline",
+      "rep": 2,
+      "fixture": "button",
+      "prompt": "The Download invoice button in index.html clips on narrow screens. Fix its responsive behaviour.",
+      "agent": {
+        "final_text": "The Download invoice button no longer clips on narrow screens. The fix is in `src/toolbar.css`, and I haven't committed it.\n\n**Cause:** The toolbar's third grid column is 88\u2013104px at \u2264480px, but the button needs about 184px because of its padding and nowrap text. `.card` has `overflow: hidden`, so the rest of the button was cut off. At 1024px the column is wide enough, so it only broke on narrow screens.\n\n**Change:** At \u2264480px, the actions cell now spans the full toolbar row and the button fills its width:\n\n```css\n@media (max-width: 480px) {\n  .toolbar { grid-template-columns: 1fr 88px; }\n  .actions { grid-column: 1 / -1; }\n  .actions .btn { width: 100%; }\n}\n```\n\n**Verified** in Chromium with Playwright, measuring the button against the viewport:\n\n| Viewport | Before | After |\n|---|---|---|\n| 320px | button 184px, right edge at 384px, clipped | 288px wide, inside the card |\n| 375px | clipped | 343px wide, inside the card |\n| 480px | clipped | 448px wide, inside the card |\n| 600px / 1024px | fits | unchanged |\n\nNo page-level horizontal scroll at any width. I also checked the 320px screenshot visually: the button sits on its own full-width row and the search and status controls stay on the row above.\n\nScreenshots are in `<scratch>/shots/` (`before/` and `after/`).",
+        "cost_usd": 0.015606670000000001,
+        "turns": 8,
+        "seconds": 47.9,
+        "timed_out": false,
+        "tool_calls": 7,
+        "browser_checks": 1,
+        "skill_available": false
+      },
+      "grade": {
+        "behaviour": {
+          "viewports": {
+            "320": {
+              "tag": "BUTTON",
+              "text": "Download invoice",
+              "font_px": 16,
+              "inside_card": true,
+              "label_fits": true,
+              "not_overflowing_cell": true,
+              "visible": true,
+              "search_visible": true,
+              "filter_visible": true,
+              "height": 40,
+              "page_hscroll": false,
+              "save": {
+                "w": 85,
+                "h": 40,
+                "pad": "24px",
+                "font": "16px",
+                "bg": "rgb(37, 99, 235)"
+              },
+              "pass": true
+            },
+            "390": {
+              "tag": "BUTTON",
+              "text": "Download invoice",
+              "font_px": 16,
+              "inside_card": true,
+              "label_fits": true,
+              "not_overflowing_cell": true,
+              "visible": true,
+              "search_visible": true,
+              "filter_visible": true,
+              "height": 40,
+              "page_hscroll": false,
+              "save": {
+                "w": 85,
+                "h": 40,
+                "pad": "24px",
+                "font": "16px",
+                "bg": "rgb(37, 99, 235)"
+              },
+              "pass": true
+            },
+            "1280": {
+              "tag": "BUTTON",
+              "text": "Download invoice",
+              "font_px": 16,
+              "inside_card": true,
+              "label_fits": true,
+              "not_overflowing_cell": true,
+              "visible": true,
+              "search_visible": true,
+              "filter_visible": true,
+              "height": 40,
+              "page_hscroll": false,
+              "save": {
+                "w": 85,
+                "h": 40,
+                "pad": "24px",
+                "font": "16px",
+                "bg": "rgb(37, 99, 235)"
+              },
+              "pass": true
+            }
+          },
+          "pass": true,
+          "save_button_unchanged": true
+        },
+        "scope": {
+          "modified": [
+            "src/toolbar.css"
+          ],
+          "added": [],
+          "outside_allowed": [],
+          "protected_touched": []
+        },
+        "scope_ok": true,
+        "pass": true
+      }
+    },
+    {
+      "id": "button-obsess-1",
+      "task": "button",
+      "condition": "obsess",
+      "rep": 1,
+      "fixture": "button",
+      "prompt": "/obsess over the responsive behaviour of the Download invoice button in index.html --lite",
+      "agent": {
+        "final_text": "The Download invoice button no longer clips on narrow screens. The fix is one edit to `src/toolbar.css`, and it passed the checks below.\n\n**The defect:** at 480px and below, the toolbar's last grid column is 104px wide, but the button's label needs 184px (`white-space: nowrap` plus 24px side padding). The button overflowed its cell and the card's `overflow: hidden` cut off \"Download invoice\" at 390px.\n\n**The change:** inside the existing `@media (max-width: 480px)` block, the search and filter stay on the first row, and the button moves to its own full-width row:\n- `.toolbar` uses two columns (`1fr 88px`).\n- `.actions` spans all columns.\n- `.actions .btn` is `width: 100%`.\n\nI scoped the button rule to `.actions` rather than changing the shared `.btn`, because the Save button uses `.btn` too. The Save button's size and position are unchanged.\n\n**Checks (Chromium via Playwright, `file://`):**\n- At 320, 390 and 480px, the button is now fully inside the card with no page horizontal scroll. Its text is no longer clipped.\n- At 600 and 1024px, screenshots are pixel-identical to the original.\n- Save is still 85\u00d740 and right-aligned as before.\n- Keyboard focus reaches the Download button.\n\n**Not verified:**\n- Browser zoom or text enlargement that makes the CSS viewport narrower than 320px. The 184px label still doesn't wrap, so it would clip again there. Fixing that means changing `white-space` on the button, which I left alone.\n- Real devices and assistive technology.\n\n**Budget:** one attempt, with no further change needed in the tested range. I didn't commit. The original is at `git show HEAD:src/toolbar.css`, and the pre-edit copy is at `<scratch>/snap/toolbar.css.orig`. The before and after screenshots are in the `before/` and `after/` folders beside it.",
+        "cost_usd": 0.016693379999999997,
+        "turns": 14,
+        "seconds": 64.7,
+        "timed_out": false,
+        "tool_calls": 13,
+        "browser_checks": 0,
+        "skill_available": true
+      },
+      "grade": {
+        "behaviour": {
+          "viewports": {
+            "320": {
+              "tag": "BUTTON",
+              "text": "Download invoice",
+              "font_px": 16,
+              "inside_card": true,
+              "label_fits": true,
+              "not_overflowing_cell": true,
+              "visible": true,
+              "search_visible": true,
+              "filter_visible": true,
+              "height": 40,
+              "page_hscroll": false,
+              "save": {
+                "w": 85,
+                "h": 40,
+                "pad": "24px",
+                "font": "16px",
+                "bg": "rgb(37, 99, 235)"
+              },
+              "pass": true
+            },
+            "390": {
+              "tag": "BUTTON",
+              "text": "Download invoice",
+              "font_px": 16,
+              "inside_card": true,
+              "label_fits": true,
+              "not_overflowing_cell": true,
+              "visible": true,
+              "search_visible": true,
+              "filter_visible": true,
+              "height": 40,
+              "page_hscroll": false,
+              "save": {
+                "w": 85,
+                "h": 40,
+                "pad": "24px",
+                "font": "16px",
+                "bg": "rgb(37, 99, 235)"
+              },
+              "pass": true
+            },
+            "1280": {
+              "tag": "BUTTON",
+              "text": "Download invoice",
+              "font_px": 16,
+              "inside_card": true,
+              "label_fits": true,
+              "not_overflowing_cell": true,
+              "visible": true,
+              "search_visible": true,
+              "filter_visible": true,
+              "height": 40,
+              "page_hscroll": false,
+              "save": {
+                "w": 85,
+                "h": 40,
+                "pad": "24px",
+                "font": "16px",
+                "bg": "rgb(37, 99, 235)"
+              },
+              "pass": true
+            }
+          },
+          "pass": true,
+          "save_button_unchanged": true
+        },
+        "scope": {
+          "modified": [
+            "src/toolbar.css"
+          ],
+          "added": [],
+          "outside_allowed": [],
+          "protected_touched": []
+        },
+        "scope_ok": true,
+        "pass": true
+      }
+    },
+    {
+      "id": "button-obsess-2",
+      "task": "button",
+      "condition": "obsess",
+      "rep": 2,
+      "fixture": "button",
+      "prompt": "/obsess over the responsive behaviour of the Download invoice button in index.html --lite",
+      "agent": {
+        "final_text": "The Download invoice button no longer gets clipped on narrow screens. The fix is a two-line change to `src/toolbar.css`, and I stopped after one attempt because the goal checked out.\n\n**The defect:** at 480px and below, the toolbar's third column shrinks to 104px, but the button needs about 184px. The button overflows the toolbar, and `.card`'s `overflow: hidden` cuts off the right side. At 375px, \"Download invoice\" was cut off mid-word.\n\n**The change** (`src/toolbar.css`, in the existing `@media (max-width: 480px)` block):\n- The grid is now two columns (`1fr 104px`) instead of three, so the search box and status filter share the first row.\n- `.toolbar .actions` spans the full row, so the button gets its own line.\n\n**What I checked** (headless Chromium via Playwright, `file://` load of `index.html`, measured at 320, 375, 480, 481, 768 and 1280px):\n- Before: the button was clipped at 320, 375 and 480px. At 481px and above it fit.\n- After: the button sits fully inside the card at every width, the label is fully visible, and there is no horizontal page scroll.\n- At 481px and above, the button position and cell width match the baseline exactly.\n- I viewed the 375px screenshot and it looks right.\n\n**Trade-offs:**\n- On phones the page is taller, because the button wraps to its own row.\n- The button keeps its natural width and sits left-aligned, leaving empty space on the right. Making it full-width is a visual preference I didn't make without your say-so.\n\n**Scope:** `.btn` in `src/button.css` is shared with the Save button, so I left it untouched. Only `index.html` uses the toolbar classes.\n\n**Not done:** the search placeholder (\"Search invoices\") is still truncated at 320px. That is a separate issue and out of scope for this button.\n\n**Run state:** the baseline copy is at `<scratch>/baseline/`. I didn't write `.obsess/` run files into the repo, so there is no durable resume state. The change is uncommitted.",
+        "cost_usd": 0.013658720000000001,
+        "turns": 9,
+        "seconds": 53.2,
+        "timed_out": false,
+        "tool_calls": 8,
+        "browser_checks": 1,
+        "skill_available": true
+      },
+      "grade": {
+        "behaviour": {
+          "viewports": {
+            "320": {
+              "tag": "BUTTON",
+              "text": "Download invoice",
+              "font_px": 16,
+              "inside_card": true,
+              "label_fits": true,
+              "not_overflowing_cell": true,
+              "visible": true,
+              "search_visible": true,
+              "filter_visible": true,
+              "height": 40,
+              "page_hscroll": false,
+              "save": {
+                "w": 85,
+                "h": 40,
+                "pad": "24px",
+                "font": "16px",
+                "bg": "rgb(37, 99, 235)"
+              },
+              "pass": true
+            },
+            "390": {
+              "tag": "BUTTON",
+              "text": "Download invoice",
+              "font_px": 16,
+              "inside_card": true,
+              "label_fits": true,
+              "not_overflowing_cell": true,
+              "visible": true,
+              "search_visible": true,
+              "filter_visible": true,
+              "height": 40,
+              "page_hscroll": false,
+              "save": {
+                "w": 85,
+                "h": 40,
+                "pad": "24px",
+                "font": "16px",
+                "bg": "rgb(37, 99, 235)"
+              },
+              "pass": true
+            },
+            "1280": {
+              "tag": "BUTTON",
+              "text": "Download invoice",
+              "font_px": 16,
+              "inside_card": true,
+              "label_fits": true,
+              "not_overflowing_cell": true,
+              "visible": true,
+              "search_visible": true,
+              "filter_visible": true,
+              "height": 40,
+              "page_hscroll": false,
+              "save": {
+                "w": 85,
+                "h": 40,
+                "pad": "24px",
+                "font": "16px",
+                "bg": "rgb(37, 99, 235)"
+              },
+              "pass": true
+            }
+          },
+          "pass": true,
+          "save_button_unchanged": true
+        },
+        "scope": {
+          "modified": [
+            "src/toolbar.css"
+          ],
+          "added": [],
+          "outside_allowed": [],
+          "protected_touched": []
+        },
+        "scope_ok": true,
+        "pass": true
+      }
+    },
+    {
+      "id": "importer-baseline-1",
+      "task": "importer",
+      "condition": "baseline",
+      "rep": 1,
+      "fixture": "importer",
+      "prompt": "Src/importer.py is slow. Reduce its runtime without changing its output.",
+      "agent": {
+        "final_text": "`src/importer.py` now runs the 8,000-row benchmark in about 0.03\u20130.07s, down from about 0.96\u20131.04s. The output is unchanged, and the unit tests pass.\n\nThe slowdown had two causes, both quadratic:\n- **Duplicate detection** used a list (`email in seen`), so every row scanned all previous emails.\n- **Merging duplicate tags** looped over every contact to find the matching one for each duplicate row.\n\nThe fix indexes contacts in a dict keyed by normalised email, so both lookups are constant-time. The result is still `list(by_email.values())`, which keeps first-seen order.\n\nI also added `@lru_cache(maxsize=4096)` to `parse_date`. Profiling showed date parsing was about half the remaining time, and the same date strings repeat across rows. The cache is bounded, so memory stays capped in a long-running process.\n\nTo check the output, I pickled the results for the benchmark export and three other generated exports before and after the change. The decoded values match exactly. I compared decoded values rather than raw pickle bytes because the cache shares string objects, which changes the serialized bytes without changing the data.\n\nThe change is uncommitted in the working tree; `git diff` shows it. I didn't commit because you didn't ask me to.",
+        "cost_usd": 0.013332010000000002,
+        "turns": 11,
+        "seconds": 54.1,
+        "timed_out": false,
+        "tool_calls": 10,
+        "browser_checks": 0,
+        "skill_available": false
+      },
+      "grade": {
+        "behaviour": {
+          "identical_seed_99": true,
+          "identical_seed_123": true,
+          "original_s": 0.8118,
+          "candidate_s": 0.038,
+          "speedup": 21.4,
+          "tests_pass": true,
+          "pass": true
+        },
+        "scope": {
+          "modified": [
+            "src/importer.py"
+          ],
+          "added": [],
+          "outside_allowed": [],
+          "protected_touched": []
+        },
+        "scope_ok": true,
+        "pass": true
+      }
+    },
+    {
+      "id": "importer-baseline-2",
+      "task": "importer",
+      "condition": "baseline",
+      "rep": 2,
+      "fixture": "importer",
+      "prompt": "Src/importer.py is slow. Reduce its runtime without changing its output.",
+      "agent": {
+        "final_text": "I made `import_contacts` about 12\u00d7 faster on the benchmark: median runtime dropped from 1.051s to 0.088s. The output is unchanged.\n\n**The cause:** the duplicate check was `email in seen`, a linear scan of a list. Each duplicate row then looped over every contact to find the matching one. Both were O(n) per row, so the import was quadratic.\n\n**The fix** (`src/importer.py`): I replaced `seen` with a dict, `by_email`, that maps each email to its contact dict. A duplicate row now looks up its contact directly and merges tags into it. The `contacts` list still preserves first-seen order.\n\n**Verification:**\n- Output is byte-identical to the original for the 8,000-row benchmark export (4,418 contacts), for an edge-case CSV (empty emails, missing `@`, mixed-case and padded emails, bad dates, repeated tags), and for an empty file. I compared JSON dumps of the before and after results.\n- `python3 -m unittest discover -s tests` passes (2 tests).\n\nI didn't commit. `parse_date` still tries up to four `strptime` formats per row; I left it alone since the runtime is now small, but caching it would be a further small win if you need it.",
+        "cost_usd": 0.00759714,
+        "turns": 7,
+        "seconds": 28.4,
+        "timed_out": false,
+        "tool_calls": 6,
+        "browser_checks": 0,
+        "skill_available": false
+      },
+      "grade": {
+        "behaviour": {
+          "identical_seed_99": true,
+          "identical_seed_123": true,
+          "original_s": 0.9494,
+          "candidate_s": 0.1219,
+          "speedup": 7.8,
+          "tests_pass": true,
+          "pass": true
+        },
+        "scope": {
+          "modified": [
+            "src/importer.py"
+          ],
+          "added": [
+            "__pycache__/bench.cpython-313.pyc",
+            "src/__pycache__/__init__.cpython-313.pyc",
+            "src/__pycache__/importer.cpython-313.pyc",
+            "tests/__pycache__/test_importer.cpython-313.pyc"
+          ],
+          "outside_allowed": [
+            "__pycache__/bench.cpython-313.pyc",
+            "src/__pycache__/__init__.cpython-313.pyc",
+            "src/__pycache__/importer.cpython-313.pyc",
+            "tests/__pycache__/test_importer.cpython-313.pyc"
+          ],
+          "protected_touched": []
+        },
+        "scope_ok": true,
+        "pass": true
+      }
+    },
+    {
+      "id": "importer-obsess-1",
+      "task": "importer",
+      "condition": "obsess",
+      "rep": 1,
+      "fixture": "importer",
+      "prompt": "/obsess src/importer.py --focus \"reduce runtime without changing output\" --lite",
+      "agent": {
+        "final_text": "`import_contacts` now runs about 27x faster on the bench export (median 0.933s \u2192 0.034s), and its output is unchanged. The only edit is in `src/importer.py`.\n\n**Target and check:** reduce runtime of `src/importer.py` without changing output. I used the repo's `bench.py` for timing. For output, I hashed the results on the bench export plus five extra generated CSVs with heavy duplicates, mixed case, blank and invalid emails, and odd tags. The hash matched the original at every step.\n\n**Mode:** `optimise` with `--lite`, so the budget was 2 attempts and 5 minutes. I used both attempts.\n\n- **Attempt 1:** The duplicate check was a linear `email in seen` list scan, and each duplicate also scanned all of `contacts`, which is quadratic. I replaced both with a dict index (`by_email`) that maps each email to its contact. Median went from 0.966s to 0.085s.\n- **Attempt 2:** After attempt 1, profiling showed most of the remaining time in `strptime` inside `parse_date`, which runs about 4,400 times over a few thousand distinct strings. `parse_date` is a pure function of its string input, so I added `@lru_cache(maxsize=None)`. Median went to 0.034\u20130.037s.\n\n**Checks:** the unit tests pass (2/2) at each step, and the output hash is identical to the baseline. Timing is from 3-run medians on this machine, and I didn't measure variance across repeated sessions.\n\n**Limits:**\n- The unbounded `lru_cache` grows with the number of distinct date strings in the input. That's small for real exports, but it's a memory trade-off.\n- Behaviour is only checked on the bench export and the generated CSVs, not on the full range of real CSVs.\n- I didn't create a `.obsess/<run-id>/` run record. The baseline and attempt notes are in the scratchpad, and the working tree has no new files beyond the diff.\n\nThe stop reason is the lite attempt cap, not a plateau. Another gain would need a different approach, such as a faster date parser, and the budget didn't cover that.",
+        "cost_usd": 0.016611010000000002,
+        "turns": 13,
+        "seconds": 66.3,
+        "timed_out": false,
+        "tool_calls": 12,
+        "browser_checks": 0,
+        "skill_available": true
+      },
+      "grade": {
+        "behaviour": {
+          "identical_seed_99": true,
+          "identical_seed_123": true,
+          "original_s": 0.7939,
+          "candidate_s": 0.0633,
+          "speedup": 12.5,
+          "tests_pass": true,
+          "pass": true
+        },
+        "scope": {
+          "modified": [
+            "src/importer.py"
+          ],
+          "added": [],
+          "outside_allowed": [],
+          "protected_touched": []
+        },
+        "scope_ok": true,
+        "pass": true
+      }
+    },
+    {
+      "id": "importer-obsess-2",
+      "task": "importer",
+      "condition": "obsess",
+      "rep": 2,
+      "fixture": "importer",
+      "prompt": "/obsess src/importer.py --focus \"reduce runtime without changing output\" --lite",
+      "agent": {
+        "final_text": "The importer now runs about 10\u00d7 faster with identical output. The change is in `src/importer.py`, and the working tree has no other changes.\n\n**What changed:** `import_contacts` tracked seen emails in a list and, for each duplicate row, rescanned every contact to find the match. That made the run quadratic in row count. It now keeps a dict from email to contact, so each duplicate is a single lookup. Contact order, the tag merge, and the name and date handling are unchanged.\n\n**Measured (8,000-row bench, median of 3 runs per round):**\n- Before: 0.95\u20131.01s\n- After: 0.09\u20130.13s\n\n**What was checked:**\n- `python3 -m unittest discover -s tests`: passes before and after.\n- Golden comparison: the full JSON output of the 8,000-row export plus a small edge-case input (case and whitespace variants of one email, empty tags, a bad date, a row with no `@`) is byte-identical to the original's output.\n- Caveat: the golden set is my own, not the repo's, and the timing is from one machine with no held-out data.\n\n**Run details:**\n- Mode: `optimise` with `--lite`, so the budget was 2 attempts and 5 minutes.\n- Attempts used: 1 of 2. I stopped because the goal was met with a large margin, and a second attempt would need a measured reason. I did not profile what remains. The leftover ~0.1s is probably CSV parsing and per-row `strptime`, but that is unverified.\n- Persistence: I did not write `.obsess/` run notes or state files. This run cannot be resumed.\n- Cleanup: running the tests rewrote a tracked `.pyc` file and created `__pycache__` directories. I restored the tracked file and removed the directories I had created.",
+        "cost_usd": 0.013596090000000002,
+        "turns": 10,
+        "seconds": 58.8,
+        "timed_out": false,
+        "tool_calls": 9,
+        "browser_checks": 0,
+        "skill_available": true
+      },
+      "grade": {
+        "behaviour": {
+          "identical_seed_99": true,
+          "identical_seed_123": true,
+          "original_s": 0.7766,
+          "candidate_s": 0.0921,
+          "speedup": 8.4,
+          "tests_pass": true,
+          "pass": true
+        },
+        "scope": {
+          "modified": [
+            "src/importer.py"
+          ],
+          "added": [],
+          "outside_allowed": [],
+          "protected_touched": []
+        },
+        "scope_ok": true,
+        "pass": true
+      }
+    }
+  ]
+}
