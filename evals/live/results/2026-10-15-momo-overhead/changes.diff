@@ -1,0 +1,749 @@
+diff --git a/README.md b/README.md
+index c7fb248..2ab716a 100644
+--- a/README.md
++++ b/README.md
+@@ -4,11 +4,12 @@ A browser tycoon game about running a momo stall on a Kathmandu street. Cook mom
+ serve hungry customers, spend rupees on upgrades, hire staff, and grow from a street
+ stall into a busy Newari restaurant.
+ 
+-Everything is drawn in code with Three.js. The camera looks down on the business from
+-high above, like the classic restaurant tycoon games, so the street, the queue, the
+-counter, the steamers and kitchen, and the staff are all in view at once. Rooftops are
+-tiled with red ridges, prayer flags string across the lane, a stupa and Buddha eyes sit
+-in the courtyard, and marigold garlands and brass lanterns hang over the counter.
++Everything is drawn in code with Three.js. The camera looks straight down on the business,
++like the classic tycoon games, so the floor plan reads like a map: the street, the queue,
++the counter, the steamers and kitchen, and the staff are all in view at once. Steamers show
++their state from above (a lid while cooking, the momos once ready). Rooftops are tiled with
++red ridges, prayer flags lie strung across the lane, a stupa and Buddha eyes sit in the
++courtyard, and marigold garlands and brass lanterns hang over the counter.
+ 
+ ## Run it
+ 
+diff --git a/js/ui.js b/js/ui.js
+index 0686d69..b5e5665 100644
+--- a/js/ui.js
++++ b/js/ui.js
+@@ -240,8 +240,29 @@ export function createUI({ act }) {
+       <div class="cl-bar"><span></span></div>`;
+   }
+ 
++  // Queued orders can land on top of each other from above, so each label is lifted
++  // above any label it would cover. Labels stay where the customers are, stacked if needed.
++  function placeLabels(shown) {
++    shown.sort((a, b) => a.y - b.y);
++    const placed = [];
++    for (const it of shown) {
++      const w = it.node.offsetWidth, h = it.node.offsetHeight;
++      let bottom = it.y;
++      let top = bottom - h;
++      for (let guard = 0; guard < 12; guard++) {
++        const hit = placed.find((r) => Math.abs(r.x - it.x) < (r.w + w) / 2 - 2 && top < r.bottom && bottom > r.top);
++        if (!hit) break;
++        bottom = hit.top - 4;
++        top = bottom - h;
++      }
++      placed.push({ x: it.x, w, top, bottom });
++      it.node.style.transform = `translate(${it.x}px, ${bottom}px) translate(-50%, -100%)`;
++    }
++  }
++
+   function renderLabels(s, world) {
+     const seen = new Set();
++    const shown = [];
+     for (const c of s.queue) {
+       seen.add(c.id);
+       let node = labelEls.get(c.id);
+@@ -267,12 +288,13 @@ export function createUI({ act }) {
+       node.classList.toggle('angry', frac < 0.22);
+       const p = world.customerScreen(c.id);
+       if (p && p.visible) {
+-        node.style.transform = `translate(${p.x}px, ${p.y - 6}px) translate(-50%, -100%)`;
++        shown.push({ node, x: p.x, y: p.y - 6 });
+         node.style.display = '';
+       } else {
+         node.style.display = 'none';
+       }
+     }
++    placeLabels(shown);
+     for (const [id, node] of labelEls) {
+       if (!seen.has(id)) {
+         node.remove();
+@@ -288,10 +310,14 @@ export function createUI({ act }) {
+     // Shorter badge text when neighbouring steamers would crowd each other on
+     // screen, and on narrow screens (bottom-sheet phones, small landscape).
+     let tight = false;
++    // Neighbouring steamers in the same row closer than a full "Load" label: use short labels.
++    let dense = false;
+     for (let i = 0; i < count; i++) {
+       for (let j = i + 1; j < count; j++) {
+         const a = pts[i], b = pts[j];
+-        if (a && b && a.visible && b.visible && Math.abs(a.y - b.y) < 40 && Math.abs(a.x - b.x) < 120) tight = true;
++        if (!a || !b || !a.visible || !b.visible) continue;
++        if (Math.abs(a.y - b.y) < 40 && Math.abs(a.x - b.x) < 120) tight = true;
++        if (Math.abs(a.y - b.y) < 40 && Math.abs(a.x - b.x) < 46) dense = true;
+       }
+     }
+     const compact = tight || document.body.classList.contains('sheet') || window.innerWidth < 900;
+@@ -299,6 +325,7 @@ export function createUI({ act }) {
+       if (!badgeEls[i]) {
+         const b = document.createElement('button');
+         b.className = 'basket-badge';
++        b.setAttribute('aria-label', `Steamer ${i + 1}`);
+         b.addEventListener('click', () => act('tap', String(i)));
+         el.labels.appendChild(b);
+         badgeEls[i] = b;
+@@ -311,14 +338,16 @@ export function createUI({ act }) {
+         continue;
+       }
+       let text, cls;
++      // Compact badges keep only the count: the green colour already says "ready".
++      // Where steamers are packed tighter still, the empty badge shrinks to "+".
+       if (st.state === 'ready') {
+-        text = compact ? `Ready ×${st.count}` : `Ready ×${st.count} · collect`;
++        text = compact ? `×${st.count}` : `Ready ×${st.count} · collect`;
+         cls = 'ready';
+       } else if (st.state === 'cooking') {
+         text = `${Math.ceil(st.left)}s`;
+         cls = '';
+       } else {
+-        text = compact ? 'Load' : 'Tap to load';
++        text = dense ? '+' : compact ? 'Load' : 'Tap to load';
+         cls = 'empty';
+       }
+       const key = `${text}|${cls}`;
+@@ -328,7 +357,8 @@ export function createUI({ act }) {
+         node._key = key;
+       }
+       node.style.display = '';
+-      node.style.transform = `translate(${p.x}px, ${p.y}px) translate(-50%, -100%)`;
++      // Front-row badges hang below their anchor, back-row ones sit above it (see world.slotScreen).
++      node.style.transform = `translate(${p.x}px, ${p.y}px) translate(-50%, ${p.below ? '0' : '-100%'})`;
+     }
+     for (let i = count; i < badgeEls.length; i++) badgeEls[i].style.display = 'none';
+   }
+diff --git a/js/world.js b/js/world.js
+index aafff94..99b51e6 100644
+--- a/js/world.js
++++ b/js/world.js
+@@ -1,20 +1,22 @@
+-// Three.js scene: Kathmandu street, Newari architecture, Himalayan backdrop,
++// Three.js scene: Kathmandu street, Newari architecture, neighbouring rooftops,
+ // steamers, steam particles, prayer flags, customers and staff. Everything is
+ // generated in code (canvas textures + primitive geometry); no external assets.
++// Everything is drawn to read from straight above, like a tycoon map.
+ import * as THREE from 'three';
+ import { ITEMS, STAGES, MAX_SLOTS, ITEM_ORDER } from './data.js';
+ 
+ const TAU = Math.PI * 2;
+ const COUNTER_H = 0.9;
+ const STEAM_N = 320;
+-// Overhead 3/4 camera: steep elevation, narrow lens. PLANS[] is the floor plan
+-// each stage must keep fully on screen (x/z ground extents, maxY = tallest roof).
+-const FOV = 34;
+-const ELEV = THREE.MathUtils.degToRad(57);
++// Straight-down orthographic camera (pitch 90°). PLANS[] is the ground footprint
++// each stage must keep fully on screen (x/z extents). From directly above, height
++// does not move anything on screen, so only the footprint is framed.
++const CAM_HEIGHT = 60;
++const FLAG_W = 0.44;
+ const PLANS = [
+-  { minX: -7.6, maxX: 7.6, minZ: -5.2, maxZ: 8.6, maxY: 4.8 },
+-  { minX: -10.8, maxX: 10.8, minZ: -6.6, maxZ: 8.6, maxY: 6.6 },
+-  { minX: -11.6, maxX: 11.6, minZ: -8.0, maxZ: 8.6, maxY: 8.4 },
++  { minX: -7.6, maxX: 7.6, minZ: -5.2, maxZ: 9.0 },
++  { minX: -10.8, maxX: 10.8, minZ: -6.6, maxZ: 9.0 },
++  { minX: -11.6, maxX: 11.6, minZ: -8.4, maxZ: 9.0 },
+ ];
+ const rnd = (a, b) => a + Math.random() * (b - a);
+ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+@@ -200,19 +202,6 @@ function glowTexture(r, gg, b) {
+   });
+ }
+ 
+-function skyTexture() {
+-  return canvasTex(4, 512, (g, w, h) => {
+-    const grd = g.createLinearGradient(0, 0, 0, h);
+-    grd.addColorStop(0, '#1d2a58');
+-    grd.addColorStop(0.35, '#5a4a88');
+-    grd.addColorStop(0.62, '#e0785a');
+-    grd.addColorStop(0.8, '#ffb27a');
+-    grd.addColorStop(1, '#ffe0b0');
+-    g.fillStyle = grd;
+-    g.fillRect(0, 0, w, h);
+-  });
+-}
+-
+ function kitchenTexture() {
+   return canvasTex(256, 256, (g, w, h) => {
+     g.fillStyle = '#6d6259';
+@@ -276,38 +265,6 @@ function mesh(geo, mat, x, y, z, parent, cast = true) {
+   return m;
+ }
+ 
+-// Ridge profile used for the Himalayan backdrop; snow above the snow line.
+-function ridgeGeometry({ base, height, lo, hi, snow, seed, snowLine = 0.6, width = 420, cols = 120 }) {
+-  const rnd01 = seededRandom(seed);
+-  const raw = Array.from({ length: cols + 1 }, () => rnd01());
+-  for (let pass = 0; pass < 2; pass++) {
+-    for (let i = 1; i < cols; i++) raw[i] = (raw[i - 1] + raw[i] * 2 + raw[i + 1]) / 4;
+-  }
+-  const pos = [], col = [], idx = [];
+-  const cLo = new THREE.Color(lo), cHi = new THREE.Color(hi), cSnow = new THREE.Color(snow);
+-  const c = new THREE.Color();
+-  for (let i = 0; i <= cols; i++) {
+-    const x = -width / 2 + (width * i) / cols;
+-    // Peaky profile: a few tall summits with valleys between them.
+-    const t = Math.pow(clamp(raw[i] * 1.5 - 0.2, 0, 1), 1.5);
+-    const top = base + height * t;
+-    pos.push(x, top, 0, x, -10, 0);
+-    if (t > snowLine) c.copy(cHi).lerp(cSnow, clamp((t - snowLine) / 0.2, 0, 1));
+-    else c.copy(cLo).lerp(cHi, t / snowLine);
+-    col.push(c.r, c.g, c.b, c.r * 0.7, c.g * 0.7, c.b * 0.7);
+-    if (i < cols) {
+-      const a = i * 2;
+-      idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2);
+-    }
+-  }
+-  const geo = new THREE.BufferGeometry();
+-  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+-  geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+-  geo.setIndex(idx);
+-  geo.computeVertexNormals();
+-  return geo;
+-}
+-
+ // Strings of prayer flags between two points, sagging in the middle.
+ function addFlagString(parent, flagList, a, b, sag, count, flagMats) {
+   const A = new THREE.Vector3(...a), B = new THREE.Vector3(...b);
+@@ -317,7 +274,8 @@ function addFlagString(parent, flagList, a, b, sag, count, flagMats) {
+     pts.push(new THREE.Vector3().lerpVectors(A, B, t).add(new THREE.Vector3(0, -sag * 4 * t * (1 - t), 0)));
+   }
+   parent.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: 0x3b2a1a })));
+-  const W = 0.36, H = 0.28;
++  // Flags lie flat, so from overhead they read as coloured squares strung along the line.
++  const W = FLAG_W, H = 0.38;
+   for (let k = 0; k < count; k++) {
+     const t = (k + 0.5) / count;
+     const p = pts[Math.round(t * 40)];
+@@ -326,7 +284,9 @@ function addFlagString(parent, flagList, a, b, sag, count, flagMats) {
+     const geo = new THREE.PlaneGeometry(W, H, 6, 2);
+     const mat = flagMats[k % flagMats.length];
+     const m = new THREE.Mesh(geo, mat);
+-    m.position.set(p.x, p.y - H / 2 - 0.02, p.z);
++    m.rotation.order = 'YXZ';
++    m.rotation.x = -Math.PI / 2;
++    m.position.set(p.x, p.y - 0.02, p.z);
+     m.rotation.y = Math.atan2(-dir.z, dir.x);
+     m.castShadow = true;
+     parent.add(m);
+@@ -392,12 +352,38 @@ function addStupa(parent, x, z, scale, mats) {
+ // Two-tier sloped roof built from tilted slabs (Newari style).
+ // Tilted tile roof with a red ridge along its crown, so the rooftop reads from above.
+ const ridgeMat = new THREE.MeshStandardMaterial({ color: 0x9c2f1c, roughness: 0.6 });
++// Tiles are sized in world units (about 1.2 per texture), so they read as tiles from above.
++function tileMaterial(tilesMat, w, d) {
++  const t = tilesMat.map.clone();
++  t.repeat.set(w / 1.2, d / 1.2);
++  t.needsUpdate = true;
++  return new THREE.MeshStandardMaterial({ map: t, roughness: 0.85 });
++}
++
++// Neighbouring rooftops around the lane, drawn as they look from above: tiled blocks
++// with a red ridge, a water tank and marigold pots. They sit outside the floor plan,
++// so they only fill the margins of the screen.
++function addNeighbourRoofs(parent, mat, tilesMat) {
++  const blocks = [
++    [-15.5, -10, 6, 5], [-15.5, 1, 6, 7], [-15.5, 11.5, 6, 4],
++    [15.5, -10.5, 6, 5], [15.5, 1, 6, 6], [15.5, 9.5, 6, 5],
++    [-4, -15.5, 8, 4], [5, -15.5, 9, 4], [-1, 16, 14, 4],
++  ];
++  for (const [x, z, w, d] of blocks) {
++    mesh(new THREE.BoxGeometry(w, 0.5, d), tileMaterial(tilesMat, w, d), x, 3.2, z, parent);
++    mesh(new THREE.BoxGeometry(w * 0.96, 0.1, 0.26), mat.red, x, 3.5, z, parent, false);
++    mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.9, 12), mat.metal, x + w / 3, 3.9, z, parent);
++    for (const k of [-1, 1]) mesh(new THREE.SphereGeometry(0.32, 10, 8), mat.marigold[k > 0 ? 1 : 0], x - w / 3, 3.85, z + k * d / 4, parent, false);
++  }
++}
++
+ function roofSlab(parent, w, d, y, z, tilt, mat) {
+   const g = new THREE.Group();
+   g.position.set(0, y, z);
+   g.rotation.x = -tilt;
+-  mesh(new THREE.BoxGeometry(w, 0.24, d), mat, 0, 0, 0, g);
+-  mesh(new THREE.BoxGeometry(w * 0.98, 0.1, 0.2), mat, 0, -0.16, d / 2 - 0.05, g, false);
++  const tiles = tileMaterial(mat, w, d);
++  mesh(new THREE.BoxGeometry(w, 0.24, d), tiles, 0, 0, 0, g);
++  mesh(new THREE.BoxGeometry(w * 0.98, 0.1, 0.2), tiles, 0, -0.16, d / 2 - 0.05, g, false);
+   mesh(new THREE.BoxGeometry(w * 0.96, 0.12, 0.28), ridgeMat, 0, 0.17, 0, g, false);
+   parent.add(g);
+   return g;
+@@ -475,7 +461,8 @@ function makeHuman({ shirt, pants, skin, topi, apron, white }, mats) {
+   }
+   const torso = new THREE.Group();
+   torso.position.y = 0.85;
+-  mesh(new THREE.CylinderGeometry(0.27, 0.3, 0.9, 10), shirtM, 0, 0.45, 0, torso);
++  // Wider across the shoulders than front to back, so the shoulders show from above.
++  mesh(new THREE.CylinderGeometry(0.27, 0.3, 0.9, 12), shirtM, 0, 0.45, 0, torso).scale.set(1.3, 1, 0.9);
+   if (apron) mesh(new THREE.BoxGeometry(0.46, 0.7, 0.05), apron, 0, 0.45, 0.28, torso);
+   root.add(torso);
+   h.torso = torso;
+@@ -487,6 +474,8 @@ function makeHuman({ shirt, pants, skin, topi, apron, white }, mats) {
+     const tm = white ? mats.whiteCap : mats.topi;
+     mesh(new THREE.CylinderGeometry(0.2, 0.21, 0.14, 14), tm, 0, 0.15, 0, head);
+     mesh(new THREE.CylinderGeometry(0.19, 0.19, 0.02, 14), tm, 0, 0.23, 0, head, false);
++    // Brim: a wider disc, so the hat outlines the head from above.
++    mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.025, 16), tm, 0, 0.09, 0, head, false);
+   }
+   root.add(head);
+   h.head = head;
+@@ -527,11 +516,11 @@ export function createWorld(canvas) {
+   renderer.outputColorSpace = THREE.SRGBColorSpace;
+ 
+   const scene = new THREE.Scene();
+-  scene.background = skyTexture();
+-  scene.fog = new THREE.Fog(0xd9c0d6, 70, 330);
++  scene.background = new THREE.Color(0x2a1a12);
+ 
+-  const camera = new THREE.PerspectiveCamera(FOV, 1, 0.5, 400);
+-  const cam = { yaw: 0, dragYaw: 0, zoom: 1, zoomTarget: 1, pan: new THREE.Vector2(), dist: 20 };
++  // Straight-down orthographic camera. cam.scale is CSS pixels per world unit.
++  const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 1, 200);
++  const cam = { yaw: 0, dragYaw: 0, zoom: 1, zoomTarget: 1, pan: new THREE.Vector2(), scale: 40 };
+ 
+   // Lights: warm low sun, cool sky fill, and a candle-like glow over the stall.
+   scene.add(new THREE.HemisphereLight(0xd7e0ff, 0x5a3d2b, 1.0));
+@@ -590,36 +579,34 @@ export function createWorld(canvas) {
+     shrub: new THREE.MeshStandardMaterial({ color: 0x3f7a3a, roughness: 0.9 }),
+     shrub2: new THREE.MeshStandardMaterial({ color: 0x5f9a4a, roughness: 0.9 }),
+     cloth: new THREE.MeshStandardMaterial({ color: 0xb8322a, roughness: 0.9 }),
++    // Steamer lids are aluminium, so a covered steamer reads differently from a bamboo basket.
++    lid: new THREE.MeshStandardMaterial({ color: 0xc9ced3, roughness: 0.45, metalness: 0.35 }),
+   });
+   const glowSpriteMat = (t) => new THREE.SpriteMaterial({ map: t, color: 0xffffff, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true });
++  // A glow that lies flat on the counter, so it reads from above (a sprite would face the camera as a dot).
++  const flatGlow = (map, size, y) => {
++    const m = new THREE.Mesh(new THREE.PlaneGeometry(size, size), new THREE.MeshBasicMaterial({ map, color: 0xffffff, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
++    m.rotation.x = -Math.PI / 2;
++    m.position.y = y;
++    return m;
++  };
+   const momoMats = {};
+   for (const k of ITEM_ORDER) {
+     momoMats[k] = new THREE.MeshStandardMaterial({ color: ITEMS[k].color, roughness: k === 'cmomo' ? 0.35 : 0.55 });
+   }
+-  const momoGeo = new THREE.SphereGeometry(0.115, 10, 8);
++  const momoGeo = new THREE.SphereGeometry(0.13, 10, 8);
+   const stoveGeo = new THREE.BoxGeometry(0.9, 0.55, 0.85);
+   // Invisible but pickable: tap targets wider than the figures themselves.
+   const hitMat = new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false });
+ 
+-  // Environment: sky, paving, Himalayan ridges.
++  // Environment seen from above: paving around the lane, with neighbouring rooftops.
+   const env = new THREE.Group();
+   scene.add(env);
+   const ground = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), mat.ground);
+   ground.rotation.x = -Math.PI / 2;
+   ground.receiveShadow = true;
+   env.add(ground);
+-  // Far to near: snowy Himalayan summits, hazy mid ridges, then green foothills.
+-  const ridges = [
+-    { z: -200, base: 4, height: 62, lo: '#6d78a8', hi: '#a3aed6', snow: '#f7f8ff', snowLine: 0.5, seed: 7 },
+-    { z: -135, base: 2, height: 30, lo: '#5b6896', hi: '#8c98c4', snow: '#eef2ff', snowLine: 0.55, seed: 19 },
+-    { z: -88, base: 0, height: 14, lo: '#5d6a5e', hi: '#8e9a7a', snow: '#e6ebf5', snowLine: 0.8, seed: 31 },
+-    { z: -62, base: -1, height: 7, lo: '#4f6b3c', hi: '#86985a', snow: '#e6ebf5', snowLine: 2, seed: 43 },
+-  ];
+-  for (const r of ridges) {
+-    const m = new THREE.Mesh(ridgeGeometry(r), new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide, flatShading: true }));
+-    m.position.z = r.z;
+-    env.add(m);
+-  }
++  addNeighbourRoofs(env, mat, mat.tile);
+ 
+   // Shared prayer-flag and lantern helpers used by stage builders.
+   const glowParts = { bodyMat: mat.lantern, brassMat: mat.brass, spriteMat: glowSpriteMat(tex.warm) };
+@@ -642,7 +629,7 @@ export function createWorld(canvas) {
+       void main() {
+         vA = aAlpha;
+         vec4 mv = modelViewMatrix * vec4(position, 1.0);
+-        gl_PointSize = aSize * uScale / -mv.z;
++        gl_PointSize = aSize * uScale;
+         gl_Position = projectionMatrix * mv;
+       }`,
+     fragmentShader: `
+@@ -704,7 +691,7 @@ export function createWorld(canvas) {
+       const base = f.base;
+       for (let i = 0; i < arr.count; i++) {
+         const x = base[i * 3];
+-        const u = x / 0.36 + 0.5;
++        const u = x / FLAG_W + 0.5;
+         arr.setZ(i, Math.sin(t * 2.6 + f.phase + u * 5) * 0.045 * u);
+       }
+       arr.needsUpdate = true;
+@@ -741,42 +728,44 @@ export function createWorld(canvas) {
+       g.position.set(p.x, COUNTER_H, p.z);
+       mesh(stoveGeo, mat.brick, 0, 0.275, 0, g);
+       mesh(new THREE.BoxGeometry(0.5, 0.3, 0.05), mat.darkWood, 0, 0.18, 0.44, g, false);
+-      const potY = 0.55 + 0.1;
++      // Pot sits inside the stove, with its top below the basket floor so the basket reads from above.
++      const potY = 0.52;
+       mesh(new THREE.CylinderGeometry(0.36, 0.3, 0.2, 14), mat.metal, 0, potY, 0, g);
+       const basket = new THREE.Group();
+       basket.position.y = 0.65;
+-      mesh(new THREE.CylinderGeometry(0.42, 0.38, 0.3, 18, 1, true), mat.bamboo, 0, 0.15, 0, basket);
++      // The basket walls don't cast shadows, or the open top would be dark from overhead.
++      mesh(new THREE.CylinderGeometry(0.42, 0.38, 0.3, 18, 1, true), mat.bamboo, 0, 0.15, 0, basket, false);
+       mesh(new THREE.CircleGeometry(0.38, 18), mat.bamboo, 0, 0.001, 0, basket, false).rotation.x = -Math.PI / 2;
+       mesh(new THREE.TorusGeometry(0.41, 0.02, 6, 20), mat.darkWood, 0, 0.06, 0, basket, false).rotation.x = Math.PI / 2;
+       mesh(new THREE.TorusGeometry(0.41, 0.02, 6, 20), mat.darkWood, 0, 0.25, 0, basket, false).rotation.x = Math.PI / 2;
+-      const lid = new THREE.Mesh(new THREE.SphereGeometry(0.46, 18, 8, 0, TAU, 0, Math.PI / 2), mat.bamboo);
++      // Lid: an aluminium dome with a dark knob, shown while the momos cook. From
++      // overhead a covered steamer is a silver disc; once ready it is open and the momos show.
++      const lid = new THREE.Mesh(new THREE.SphereGeometry(0.46, 18, 8, 0, TAU, 0, Math.PI / 2), mat.lid);
+       lid.scale.y = 0.4;
+       lid.position.y = 0.3;
+       lid.castShadow = true;
+       basket.add(lid);
++      const knob = mesh(new THREE.SphereGeometry(0.08, 10, 8), mat.darkWood, 0, 0.52, 0, basket, false);
+       const momos = [];
+       const pts = [[0, 0]];
+-      for (let a = 0; a < 6; a++) pts.push([0.2 * Math.cos((a * TAU) / 6), 0.2 * Math.sin((a * TAU) / 6)]);
+-      for (let a = 0; a < 3; a++) pts.push([0.1 * Math.cos(a * TAU / 3 + 0.5), 0.1 * Math.sin(a * TAU / 3 + 0.5)]);
++      for (let a = 0; a < 6; a++) pts.push([0.25 * Math.cos((a * TAU) / 6), 0.25 * Math.sin((a * TAU) / 6)]);
++      for (let a = 0; a < 3; a++) pts.push([0.12 * Math.cos(a * TAU / 3 + 0.5), 0.12 * Math.sin(a * TAU / 3 + 0.5)]);
+       for (let k = 0; k < 10; k++) {
+         const m = new THREE.Mesh(momoGeo, momoMats.steamed);
+         m.scale.set(1, 0.72, 1);
+         m.position.set(pts[k][0], 0.14, pts[k][1]);
+         m.rotation.y = Math.random() * TAU;
+-        m.castShadow = true;
++        m.castShadow = false;
+         m.visible = false;
+         basket.add(m);
+         momos.push(m);
+       }
+       g.add(basket);
+-      const fire = new THREE.Sprite(glowSpriteMat(tex.fire));
+-      fire.position.set(0, 0.25, 0.5);
+-      fire.scale.set(0.9, 0.9, 1);
++      // Flame ring around the stove while cooking; gold ring when the momos are ready.
++      const fire = flatGlow(tex.fire, 1.9, 0.1);
+       fire.visible = false;
+       g.add(fire);
+-      const ready = new THREE.Sprite(glowSpriteMat(tex.gold));
+-      ready.position.set(0, 1.55, 0);
+-      ready.scale.set(1.3, 1.3, 1);
++      const ready = flatGlow(tex.gold, 2.2, 0.11);
+       ready.visible = false;
+       g.add(ready);
+       const hitArea = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 2.2, 10), hitMat);
+@@ -784,7 +773,7 @@ export function createWorld(canvas) {
+       g.add(hitArea);
+       g.userData.pick = { type: 'slot', i: slots.length };
+       slotGroup.add(g);
+-      slots.push({ group: g, basket, lid, momos, fire, ready, worldPos: new THREE.Vector3(p.x, COUNTER_H + 1.1, p.z), item: null });
++      slots.push({ group: g, basket, lid, knob, momos, fire, ready, item: null });
+     }
+   }
+ 
+@@ -827,10 +816,9 @@ export function createWorld(canvas) {
+         mesh(new THREE.PlaneGeometry(1.2, 1.5), mat.window, x, 2.0, -3.3, S, false);
+       }
+       mesh(new THREE.BoxGeometry(0.9, 2.2, 0.1), mat.darkWood, 0, 1.3, -3.35, S, false);
+-      roofSlab(S, 13, 2.4, 3.75, -3.0, 0.28, mat.tile);
+-      mesh(new THREE.BoxGeometry(12.4, 0.18, 0.2), mat.red, 0, 3.55, -3.35, S);
+-      mesh(new THREE.PlaneGeometry(3.0, 0.62), signMat(), 0, 3.32, -3.2, S, false);
+-      kitchenShelf(S, -4.6, 4.6, -3.2, 1.55, mat);
++      // Roof covers the brick back wall only, so the kitchen floor and shelves stay open to view.
++      roofSlab(S, 13, 1.7, 3.75, -4.0, 0.28, mat.tile);
++      kitchenShelf(S, -4.6, 4.6, -2.95, 1.55, mat);
+       mesh(new THREE.BoxGeometry(1.4, 0.9, 0.7), mat.darkWood, -3.9, 0.45, -1.4, S);
+       mesh(new THREE.BoxGeometry(0.9, 0.5, 0.6), mat.metal, 3.9, 0.25, -1.5, S);
+     } else if (idx === 1) {
+@@ -848,8 +836,7 @@ export function createWorld(canvas) {
+       roofSlab(S, 12, 3.6, 4.85, bz, 0.3, mat.tile);
+       roofSlab(S, 9, 2.4, 5.7, bz, 0.3, mat.tile);
+       mesh(new THREE.ConeGeometry(0.35, 0.9, 10), mat.gold, 0, 6.5, bz, S, false);
+-      mesh(new THREE.PlaneGeometry(3.6, 0.8), signMat(), 0, 4.45, -3.3, S, false);
+-      kitchenShelf(S, -4.4, 4.4, -3.2, 1.2, mat);
++      kitchenShelf(S, -4.4, 4.4, -2.55, 1.2, mat);
+       mesh(new THREE.BoxGeometry(1.4, 0.9, 0.7), mat.darkWood, -4.0, 0.45, -1.4, S);
+       // Patio on the right with two tables.
+       floorPatch(S, tex.wood, 8.4, -0.7, 4.4, 4.6, 1.2);
+@@ -865,8 +852,9 @@ export function createWorld(canvas) {
+         { w: 6.6, h: 2.0, y: 5.6, d: 2.6, mat: mat.wood },
+       ];
+       for (const t of tiers) mesh(new THREE.BoxGeometry(t.w, t.h, t.d), t.mat, 0, t.y, bz, S);
++      // Tiered eaves, narrower than before at the front, so the kitchen behind the counter stays visible.
+       const tierRoofs = [2.45, 4.65, 6.65];
+-      tierRoofs.forEach((y, i) => roofSlab(S, tiers[i].w + 1.6, tiers[i].d + 1.6, y, bz, 0.3, mat.tile));
++      tierRoofs.forEach((y, i) => roofSlab(S, tiers[i].w + 1.6, tiers[i].d + 0.8, y, bz, 0.3, mat.tile));
+       for (const x of [-4.5, -1.5, 1.5, 4.5]) {
+         mesh(new THREE.BoxGeometry(1.4, 1.5, 0.1), mat.red, x, 1.3, -3.07, S, false);
+         mesh(new THREE.PlaneGeometry(1.2, 1.3), mat.window, x, 1.3, -3.03, S, false);
+@@ -879,7 +867,6 @@ export function createWorld(canvas) {
+         mesh(new THREE.BoxGeometry(1.4, 1.4, 0.1), mat.red, x, 5.6, -3.27, S, false);
+         mesh(new THREE.PlaneGeometry(1.2, 1.2), mat.window, x, 5.6, -3.23, S, false);
+       }
+-      mesh(new THREE.PlaneGeometry(3.8, 0.8), signMat(), 0, 3.5, -3.03, S, false);
+       mesh(new THREE.ConeGeometry(0.4, 1.0, 10), mat.gold, 0, 7.5, bz, S, false);
+       addStupa(S, -8.9, -6.6, 1.4, { white: mat.plaster, eyes: mat.eyesMat, gold: mat.gold });
+       // Dining hall to the right of the pagoda, with four tables.
+@@ -894,28 +881,28 @@ export function createWorld(canvas) {
+     mesh(new THREE.BoxGeometry(counterLen, COUNTER_H, counterDepth), mat.brick, 0, COUNTER_H / 2, 0, S);
+     mesh(new THREE.BoxGeometry(counterLen + 0.1, 0.08, counterDepth + 0.1), mat.counterTop, 0, COUNTER_H + 0.04, 0, S);
+ 
+-    // Canopy: a flat striped awning held up by four poles. It sits high and
+-    // stops short of the steamers' front edge so the baskets stay visible.
+-    // A front strip over the counter edge, so the kitchen behind stays in view.
+-    const tarpZ0 = counterDepth / 2 - 0.9;
+-    const tarpZ1 = counterDepth / 2 + 0.5;
++    // Canopy: four poles and a striped awning over the front edge of the counter.
++    // From overhead a full-width awning would hide the steamers, so the awning stops
++    // short of the baskets and the steamers stay open to view.
++    const awnZ0 = counterDepth / 2 - 0.2;
++    const awnZ1 = counterDepth / 2 + 0.9;
+     const poleX = half - 0.4;
+     for (const x of [-poleX, poleX]) {
+-      for (const z of [tarpZ0 + 0.1, tarpZ1 - 0.1]) {
++      for (const z of [awnZ0 + 0.1, awnZ1 - 0.1]) {
+         mesh(new THREE.CylinderGeometry(0.07, 0.08, 3.2, 8), mat.bamboo, x, 1.6, z, S);
+       }
+     }
+-    // Seen from overhead the awning would hide the kitchen and steamers under it,
+-    // so it is drawn slightly see-through (a cutaway), keeping the striped look.
+     const tarpSrc = idx === 1 ? mat.tarpB : mat.tarpA;
+-    const tarpMat = tarpSrc.clone();
+-    tarpMat.transparent = true;
+-    tarpMat.opacity = 0.72;
+-    const tarpMesh = new THREE.Mesh(new THREE.PlaneGeometry(counterLen + 0.8, tarpZ1 - tarpZ0), tarpMat);
+-    tarpMesh.rotation.x = -Math.PI / 2;
+-    tarpMesh.position.set(0, 3.2, (tarpZ0 + tarpZ1) / 2);
+-    tarpMesh.castShadow = true;
+-    S.add(tarpMesh);
++    const awning = new THREE.Mesh(new THREE.PlaneGeometry(counterLen + 0.8, awnZ1 - awnZ0), tarpSrc);
++    awning.rotation.x = -Math.PI / 2;
++    awning.position.set(0, 3.2, (awnZ0 + awnZ1) / 2);
++    S.add(awning);
++    // The shop sign lies flat on the awning, so its lettering reads from above.
++    const signW = Math.min(3.8, counterLen - 3);
++    const sign = new THREE.Mesh(new THREE.PlaneGeometry(signW, Math.min(0.9, signW / 4)), signMat());
++    sign.rotation.x = -Math.PI / 2;
++    sign.position.set(0, 3.23, (awnZ0 + awnZ1) / 2);
++    S.add(sign);
+ 
+     // Street props: gas cylinder and a stack of steamer baskets.
+     mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.9, 14), mat.gas, half + 1.0, 0.45, 0.5, S);
+@@ -927,14 +914,15 @@ export function createWorld(canvas) {
+     S.add(lanternsBase);
+     for (let k = 0; k < lanternCount; k++) {
+       const x = (k - (lanternCount - 1) / 2) * 3.4;
+-      addLantern(lanternsBase, x, 2.4, 0.9, glowParts);
++      addLantern(lanternsBase, x, 2.4, awnZ1 + 0.2, glowParts);
+     }
+ 
+     // Prayer flags: base string on every stage.
+     const flagsBase = new THREE.Group();
+     S.add(flagsBase);
+     const spanX = half + 0.6;
+-    addFlagString(flagsBase, flagList, [-spanX, 4.1, 1.1], [spanX, 4.3, 1.1], 0.25, 9 + idx * 2, mat.flags);
++    // Strung past the awning and its garland, so the flags do not cover the sign.
++    addFlagString(flagsBase, flagList, [-spanX, 4.1, awnZ1 + 0.7], [spanX, 4.3, awnZ1 + 0.7], 0.25, 9 + idx * 2, mat.flags);
+ 
+     // Decor add-ons (visible once purchased).
+     const flagsExtra = new THREE.Group();
+@@ -945,7 +933,7 @@ export function createWorld(canvas) {
+     addFlagString(flagsExtra, flagList, [-spanX - 0.5, 2.9, -4.5], [-spanX + 3, 5.0, -4.5], 0.4, 8, mat.flags);
+     addFlagString(flagsExtra, flagList, [spanX - 1, 5.0, -4.5], [spanX + 2, 3.5, -2.0], 0.4, 8, mat.flags);
+     // Marigold swags hang from the front edge of the canopy.
+-    addGarland(garland, [-poleX, 2.42, 1.95], [poleX, 2.42, 1.95], 0.35, 26, mat.marigold);
++    addGarland(garland, [-poleX, 2.42, awnZ1 + 0.25], [poleX, 2.42, awnZ1 + 0.25], 0.35, 26, mat.marigold);
+     for (let k = 0; k < 4; k++) {
+       addLantern(lanternsExtra, -half + 0.5 + k * ((counterLen - 1) / 3), 1.7 + (k % 2) * 0.5, 2.7, glowParts);
+     }
+@@ -992,7 +980,7 @@ export function createWorld(canvas) {
+   function queueSlot(i) {
+     const col = i % 5, row = Math.floor(i / 5);
+     // Spaced out so each order card has room to read from overhead.
+-    return new THREE.Vector3((col - 2) * 1.9 + (row % 2 ? 0.9 : 0), 0, 3.0 + row * 1.9);
++    return new THREE.Vector3((col - 2) * 1.9 + (row % 2 ? 0.9 : 0), 0, 3.7 + row * 1.9);
+   }
+ 
+   function removeCustomer(id) {
+@@ -1015,7 +1003,7 @@ export function createWorld(canvas) {
+     }
+     for (let i = 0; i < 3; i++) {
+       const h = makeHuman({ shirt: 0x5b1f2b, pants: 0x1f2b3a, skin: 0xc98a5c, topi: false, apron: mat.darkWood }, mat);
+-      h.root.position.set(-2.8 + i * 2.8, 0, 2.0);
++      h.root.position.set(-2.8 + i * 2.8, 0, 2.7);
+       h.root.rotation.y = Math.PI;
+       h.root.visible = false;
+       scene.add(h.root);
+@@ -1024,10 +1012,11 @@ export function createWorld(canvas) {
+   }
+   buildStaff();
+ 
+-  // ----- camera: overhead 3/4 view that always frames the whole floor plan -----
+-  // The camera sits at ELEV above the plan and moves its distance so the plan's
+-  // bounding box fits the rectangle left free by the HUD and the side or bottom
+-  // panel. Zoom, pan and yaw are relative to that fit.
++  // ----- camera: straight-down orthographic view that always frames the whole floor plan -----
++  // The camera looks straight down (pitch 90°), so a point's screen position depends
++  // only on its x/z: the plan reads like a map. cam.scale is CSS px per world unit,
++  // chosen so the plan's footprint fits the rectangle left free by the HUD and the
++  // side or bottom panel. Zoom, pan and yaw are relative to that fit.
+   const raycaster = new THREE.Raycaster();
+   const ndc = new THREE.Vector2();
+   const tmp = new THREE.Vector3();
+@@ -1035,52 +1024,58 @@ export function createWorld(canvas) {
+   let free = { l: 0, t: 0, r: 1, b: 1 };
+   const M = 16; // px kept clear between the framed plan and the free rectangle edge
+ 
+-  function placeCamera(cx, cz, dist) {
+-    const ce = Math.cos(ELEV), se = Math.sin(ELEV);
+-    camera.position.set(cx + Math.sin(cam.yaw) * ce * dist, se * dist, cz + Math.cos(cam.yaw) * ce * dist);
++  // Looks straight down at ground point (cx, cz). Screen-up is -z at yaw 0 (the
++  // back of the stall at the top, the street at the bottom) and turns with yaw.
++  function placeCamera(cx, cz) {
++    camera.position.set(cx, CAM_HEIGHT, cz);
++    camera.up.set(-Math.sin(cam.yaw), 0, -Math.cos(cam.yaw));
+     camera.lookAt(cx, 0, cz);
+     camera.updateMatrixWorld();
+   }
+ 
+-  // True when every corner of the plan's box projects inside the free rectangle.
+-  function fits(cx, cz, dist, p) {
+-    placeCamera(cx, cz, dist);
++  // Pixels per world unit at which the plan's footprint just fits the free rectangle,
++  // taking the current yaw into account (the rotated footprint has a different extent).
++  function planScale(p) {
++    const cx = (p.minX + p.maxX) / 2, cz = (p.minZ + p.maxZ) / 2;
++    const s = Math.sin(cam.yaw), c = Math.cos(cam.yaw);
++    let halfR = 0.01, halfU = 0.01;
+     for (const x of [p.minX, p.maxX]) {
+       for (const z of [p.minZ, p.maxZ]) {
+-        for (const y of [0, p.maxY]) {
+-          tmp.set(x, y, z).project(camera);
+-          if (tmp.z > 1) return false;
+-          const px = ((tmp.x + 1) / 2) * size.w;
+-          const py = ((1 - tmp.y) / 2) * size.h;
+-          if (px < free.l + M || px > free.r - M || py < free.t + M || py > free.b - M) return false;
+-        }
++        const dx = x - cx, dz = z - cz;
++        halfR = Math.max(halfR, Math.abs(dx * c - dz * s)); // screen right
++        halfU = Math.max(halfU, Math.abs(-dx * s - dz * c)); // screen up
+       }
+     }
+-    return true;
++    const fw = (free.r - free.l) / 2 - M, fh = (free.b - free.t) / 2 - M;
++    return Math.max(1, Math.min(fw / halfR, fh / halfU));
+   }
+ 
+-  function fitDistance(cx, cz, p) {
+-    let lo = 2, hi = 160;
+-    for (let i = 0; i < 26; i++) {
+-      const mid = (lo + hi) / 2;
+-      if (fits(cx, cz, mid, p)) hi = mid; else lo = mid;
+-    }
+-    return hi;
++  // Frustum in world units: the camera target lands in the middle of the free rectangle.
++  function setFrustum() {
++    const s = cam.scale;
++    const fcx = (free.l + free.r) / 2, fcy = (free.t + free.b) / 2;
++    camera.left = -fcx / s;
++    camera.right = (size.w - fcx) / s;
++    camera.top = fcy / s;
++    camera.bottom = (fcy - size.h) / s;
++    camera.updateProjectionMatrix();
+   }
+ 
+   function updateCamera(dt) {
+     const k = Math.min(1, dt * 4);
+-    for (const key of ['minX', 'maxX', 'minZ', 'maxZ', 'maxY']) planCur[key] += (planTarget[key] - planCur[key]) * k;
++    for (const key of ['minX', 'maxX', 'minZ', 'maxZ']) planCur[key] += (planTarget[key] - planCur[key]) * k;
+     cam.yaw += (cam.dragYaw - cam.yaw) * Math.min(1, dt * 6);
+     cam.zoom += (cam.zoomTarget - cam.zoom) * Math.min(1, dt * 8);
+     const cx0 = (planCur.minX + planCur.maxX) / 2;
+     const cz0 = (planCur.minZ + planCur.maxZ) / 2;
+-    cam.dist = fitDistance(cx0, cz0, planCur) / cam.zoom;
++    cam.scale = planScale(planCur) * cam.zoom;
+     const padX = (planCur.maxX - planCur.minX) / 2 + 2;
+     const padZ = (planCur.maxZ - planCur.minZ) / 2 + 2;
+     cam.pan.x = clamp(cam.pan.x, -padX, padX);
+     cam.pan.y = clamp(cam.pan.y, -padZ, padZ);
+-    placeCamera(cx0 + cam.pan.x, cz0 + cam.pan.y, cam.dist);
++    placeCamera(cx0 + cam.pan.x, cz0 + cam.pan.y);
++    setFrustum();
++    steamMat.uniforms.uScale.value = cam.scale * renderer.getPixelRatio();
+   }
+ 
+   // rect is the free screen rectangle in CSS px: { l, t, r, b }.
+@@ -1088,21 +1083,13 @@ export function createWorld(canvas) {
+     size = { w, h };
+     free = { ...rect };
+     renderer.setSize(w, h, false);
+-    camera.aspect = w / h;
+-    // Shift the optical centre into the middle of the free rectangle, so the
+-    // plan is framed in the space the panels leave open.
+-    const cx = (free.l + free.r) / 2;
+-    const cy = (free.t + free.b) / 2;
+-    camera.setViewOffset(w, h, w / 2 - cx, h / 2 - cy, w, h);
+-    steamMat.uniforms.uScale.value = h / (2 * Math.tan(THREE.MathUtils.degToRad(FOV / 2)));
+   }
+ 
+   // Pan in screen pixels: the ground moves with the pointer.
+   function panBy(dx, dy) {
+-    const mpp = (2 * cam.dist * Math.tan(THREE.MathUtils.degToRad(FOV / 2))) / size.h;
+-    const s = Math.sin(cam.yaw), c = Math.cos(cam.yaw), k = mpp / Math.sin(ELEV);
+-    cam.pan.x += -c * dx * mpp - s * dy * k;
+-    cam.pan.y += s * dx * mpp - c * dy * k;
++    const s = Math.sin(cam.yaw), c = Math.cos(cam.yaw), k = 1 / cam.scale;
++    cam.pan.x += (-c * dx - s * dy) * k;
++    cam.pan.y += (s * dx - c * dy) * k;
+   }
+ 
+   function zoomBy(f) {
+@@ -1139,11 +1126,13 @@ export function createWorld(canvas) {
+         sl.ready.visible = false;
+         sl.momos.forEach((m) => (m.visible = false));
+         sl.lid.visible = false;
++        sl.knob.visible = false;
+         continue;
+       }
+       const cooking = st.state === 'cooking';
+       const ready = st.state === 'ready';
+       sl.lid.visible = cooking;
++      sl.knob.visible = cooking;
+       sl.fire.visible = cooking;
+       sl.ready.visible = ready;
+       sl.item = st.item;
+@@ -1223,7 +1212,7 @@ export function createWorld(canvas) {
+       }
+       if (sl.ready.visible) {
+         const pulse = 0.5 + 0.5 * Math.sin(time * 4);
+-        sl.ready.scale.setScalar(1.1 + pulse * 0.5);
++        sl.ready.scale.setScalar(0.95 + pulse * 0.15);
+         sl.ready.material.opacity = 0.5 + pulse * 0.5;
+       }
+     }
+@@ -1283,13 +1272,16 @@ export function createWorld(canvas) {
+     return toScreen(tmp);
+   }
+ 
++  // Seen from above, a badge must not cover its steamer's lid or momos, so it is
++  // anchored just outside the steamer. Badges go behind the steamer (above on screen,
++  // into the open kitchen), except the front row of a two-row counter, which go in
++  // front. `below` tells the DOM which side.
+   function slotScreen(i) {
+     const sl = slots[i];
+     if (!sl || !sl.basket.visible) return null;
+-    // Back-row steamers get their badge lifted so the two rows do not overlap.
+-    const lift = sl.group.position.z < 0 ? 0.9 : 0;
+-    const p = new THREE.Vector3(sl.group.position.x, COUNTER_H + 1.0 + lift, sl.group.position.z);
+-    return toScreen(p);
++    const back = sl.group.position.z <= 0;
++    const p = new THREE.Vector3(sl.group.position.x, COUNTER_H, sl.group.position.z + (back ? -0.75 : 0.75));
++    return { ...toScreen(p), below: !back };
+   }
+ 
+   function pick(clientX, clientY, rect) {

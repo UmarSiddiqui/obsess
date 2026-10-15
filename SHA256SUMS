@@ -76,6 +76,15 @@ a5d79657bcac07da5ca86fb082a7ca9a809e6cfbbb77d493f4860ad0186c5142  evals/live/res
 8553ce270977ad78602a961423a1a5f5c594f76455e996b09b401eae0e676678  evals/live/results/2026-10-15-haiku-5-5-lite/transcripts/toggle-baseline-2.jsonl.gz
 d801a5903356f2f46e9565c51158e6d825f610be872be5cf982b375ad5e8263b  evals/live/results/2026-10-15-haiku-5-5-lite/transcripts/toggle-obsess-1.jsonl.gz
 e00b77e9c2e11d69662ff1cd1b74a26984ecad4ebfc81416abd48b8562ba76b5  evals/live/results/2026-10-15-haiku-5-5-lite/transcripts/toggle-obsess-2.jsonl.gz
+38c89a4926733ad4b411f4de084d109b0d5695fe0d1b84472c45afa26619f384  evals/live/results/2026-10-15-momo-overhead/README.md
+e51414d94935160cea8c7e34c4063b7b95878600bd747eda8cc930d8ccbc712c  evals/live/results/2026-10-15-momo-overhead/brief.txt
+6420e613c394852d08db351ccfb41b54f588d75e2bac33414884aad64045aa65  evals/live/results/2026-10-15-momo-overhead/changes.diff
+55f03ef8f0bebfcc95948a46db6206087adb87d97a357709ac8fe63c75835112  evals/live/results/2026-10-15-momo-overhead/desktop-playing.png
+e1e77eea11d148d39e8cf987983c6e4bc5af457c5c127e51a80700b484b23e53  evals/live/results/2026-10-15-momo-overhead/grade.json
+4db3e8998270f6527f98129c64a4b6632131a000db132b699eb63b558fb3eeed  evals/live/results/2026-10-15-momo-overhead/phone-portrait.png
+aa6f4e60f0ab99fc65da395e5fe648b7dc7448ecf2f5bbd13b8cd6169c2c7ff0  evals/live/results/2026-10-15-momo-overhead/restaurant-desktop.png
+072fd71c75c8812204968c98a12b70eae854dea4c580678c6c89af61fac54736  evals/live/results/2026-10-15-momo-overhead/restaurant-phone.png
+dbfcbd5faea6eccbdb8785d21e8a67b0886d4a019cd33f568975fffc3d1d6d64  evals/live/results/2026-10-15-momo-overhead/transcript.jsonl.gz
 5cd2811d84d8956716de0890144e47c0c9c3140aa846adbc58e86e12099552d8  evals/live/results/2026-10-15-momo-topview/README.md
 11702637cf4d7b2e844edcc92528584588e9710fa1282f1537e25294162456f9  evals/live/results/2026-10-15-momo-topview/brief.txt
 fc9d963f79976818b3b6a238fa6f2fb0e2f289b9be3e139889714e099c5a6dc4  evals/live/results/2026-10-15-momo-topview/grade-base/grade.json

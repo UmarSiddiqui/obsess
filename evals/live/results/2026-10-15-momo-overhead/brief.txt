@@ -1,0 +1,7 @@
+Make the camera fully overhead, like the classic tycoon games: look straight down on the business (90°, or within a few degrees of it), so the floor plan reads like a map. An orthographic camera is fine. Keep the whole floor plan framed in the space the UI leaves free, at every stage (street stall, shop, restaurant) and on desktop and phones (portrait and landscape).
+
+From straight above, make everything read clearly: rooftops and courtyard layout, the counter and steamers (show steamer state from above: lid on while cooking, momos visible when ready), customers and staff seen from the top (heads, hats, shoulders, a shadow), prayer flags, tables and decor. Customer order bubbles and steamer badges must stay readable and tappable. Remove or replace anything that only made sense from the side, like the Himalayan backdrop, with something that works overhead.
+
+Keep all existing gameplay, saves, zoom/fit controls and features working. Work autonomously: don't ask questions, make reasonable choices and finish.
+
+Local tooling: Chromium is at /opt/pw-browsers/chromium and Playwright is installed globally (require("playwright") works). You can serve the folder with `python3 -m http.server`. The jsDelivr CDN is blocked in this sandbox; a local copy of three@0.160.0 is at <scratch>/three if you need to route it for testing. Keep the shipped code loading Three.js from the CDN.
