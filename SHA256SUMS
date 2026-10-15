@@ -32,6 +32,7 @@ e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  evals/live/fix
 31d66a83aaa21c52cc3fd88ebfd2771aa5759244ff2edd41b8399bf2074421f9  evals/live/fixtures/toggle/src/toggle.css
 9c8925211adf894b3bf663cac94c13a2a6f34adb81f502f1d04d6f4521e9f8d1  evals/live/fixtures/toggle/src/toggle.js
 16505ebed82a357ef109920e1c4c8ee5cb6ac4fab03ced23e6e569a458420d6f  evals/live/fixtures/toggle/src/tokens.css
+d4d64901ea9e98da890f5caf7939b02b0aeba6d69a673435e5e83e30540201ed  evals/live/grade_topview.js
 f8cef4b7bd840825275f367abc8ef8c4b2d6911b5ec26c00337571423d001778  evals/live/grade_ui.js
 ca1b4a822a62bd01a9384058ab407e3ff8d7d3c536c9b6215736e9bcf30e0400  evals/live/results/2026-10-15-guardrails-after-fix/diffs/gate-dirty-worktree.diff
 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  evals/live/results/2026-10-15-guardrails-after-fix/diffs/gate-find-read-only.diff
