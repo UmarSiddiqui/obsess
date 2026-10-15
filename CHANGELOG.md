@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.4.0 - 15 October 2026
+
+### Added
+
+- **Guided sessions**, the new default when the person is present. The agent shows 2–3 small, working variants side by side, asks "1, 2 or 3?", narrows in around the pick and stops on the person's word. Protocol: `refs/guided.md`.
+- `assets/compare.template.html`: a side-by-side compare page for screenshots, recordings or live copies, with number-key picking.
+- Taste memory in `.obsess/taste.md`: short notes on what was chosen and rejected, read at the start of the next session.
+- `--auto` for unattended runs, which decide by checks alone and leave variants for later.
+
+### Why
+
+Live evals showed the same model already fixes bounded bugs without the skill. What it can't do alone is judge taste. Guided sessions put that judgement with the person and keep the agent on variants, checks and scope.
+
+
 ## 0.3.0 - 15 October 2026
 
 ### Changed

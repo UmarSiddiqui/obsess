@@ -18,7 +18,7 @@ ADAPTERS = {
     "gemini/obsess.toml": "{{args}}",
     "opencode/obsess.md": "$ARGUMENTS",
 }
-VERSION = "0.3.0"
+VERSION = "0.4.0"
 
 
 class PackageTests(unittest.TestCase):
@@ -32,7 +32,7 @@ class PackageTests(unittest.TestCase):
                 self.assertTrue((ROOT / name).is_file())
         for name in (
             "SKILL.md", "LICENSE", "refs/polish.md", "refs/recipes.md", "refs/protocol.md", "refs/recovery.md",
-            "refs/host.md", "assets/run.template.md", "assets/report.template.md", "assets/state.template.json",
+            "refs/host.md", "refs/guided.md", "assets/compare.template.html", "assets/run.template.md", "assets/report.template.md", "assets/state.template.json",
             "scripts/install.py", "scripts/gate.py", "integrations/rules/obsess.md",
             *(f"integrations/{adapter}" for adapter in ADAPTERS),
         ):
@@ -132,6 +132,19 @@ class PackageTests(unittest.TestCase):
         self.assertRegex(text, r"(?m)^name: obsess$")
         compatibility = re.search(r"(?m)^compatibility: (.+)$", text).group(1)
         self.assertLessEqual(len(compatibility), 500)
+
+    def test_guided_session_is_wired_in(self):
+        skill = (SKILL / "SKILL.md").read_text(encoding="utf-8")
+        self.assertIn("refs/guided.md", skill)
+        self.assertIn("--auto", skill)
+        guided = (SKILL / "refs/guided.md").read_text(encoding="utf-8")
+        for phrase in ("1 or 2", ".obsess/taste.md", "Without the person"):
+            self.assertIn(phrase, guided)
+        page = (SKILL / "assets/compare.template.html").read_text(encoding="utf-8")
+        block = re.search(r'<script id="variants" type="application/json">(.*?)</script>', page, re.S).group(1)
+        data = json.loads(block)
+        self.assertGreaterEqual(len(data["variants"]), 2)
+        self.assertNotRegex(page, r"https?://")
 
     def test_portable_rule_stays_dormant_until_asked(self):
         rule = (SKILL / "integrations/rules/obsess.md").read_text(encoding="utf-8")

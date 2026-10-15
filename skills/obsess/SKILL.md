@@ -1,11 +1,11 @@
 ---
 name: obsess
-description: Use when the user explicitly asks to obsess over one thing. Polish a specific UI detail or improve a bounded piece of code through short, evidence-led attempts. Also supports read-only discovery inside a named scope. Don't activate for ordinary coding requests.
+description: Use when the user explicitly asks to obsess over one thing. Polish a specific UI detail or improve a bounded piece of code through short, evidence-led attempts, guided by the user's picks between side-by-side variants when they're present. Also supports read-only discovery inside a named scope. Don't activate for ordinary coding requests.
 license: MIT
 disable-model-invocation: true
 compatibility: Agent Skills format. Native layouts for Claude Code, Codex, Gemini CLI, OpenCode, Cursor, GitHub Copilot and other skills-capable agents, plus slash-command adapters and a portable rules file. Uses the current host's tools and model. Browser feedback is needed to verify rendered UI behaviour. Host-level behaviour and model-quality gains haven't been benchmarked.
 metadata:
-  version: "0.3.0"
+  version: "0.4.0"
   status: "prototype"
   opencode/slash: "true"
   opencode/autoinvoke: "false"
@@ -34,6 +34,12 @@ Read applicable repository instructions. Identify the smallest authorised edit s
 
 State one sentence describing the target and how you'll check it. Infer sensible checks from the request and existing product behaviour; only ask when a consequential trade-off or permission remains unresolved.
 
+## Guided or on your own
+
+When the person is present, run a **guided session** by default: an eye test for their one thing. Show 2–3 small, working variants side by side under identical conditions, ask "1, 2 or 3?", narrow in around their pick, and stop on their word. They judge taste; you make variants, run the checks and keep everything working. Remember their choices in `.obsess/taste.md`. Follow [the guided protocol](refs/guided.md).
+
+Work on your own when `--auto` is set, the request says it's unattended, or no one can answer. Then never pick by imagined taste: decide by the checks alone, and leave the variants for the person to pick later.
+
 ## Choose the workflow and effort
 
 | Selection | Use for | Default ceiling |
@@ -45,11 +51,11 @@ State one sentence describing the target and how you'll check it. Infer sensible
 
 Choose automatically. “Smooth” normally means polish; measured frame-time reduction can mean optimise. Use polish for non-scalar code cleanup with explicit behaviour checks. Never invent a number for visual taste.
 
-Optional flags: `--mode polish|optimise`, `--lite`, `--iterations N`, `--minutes N`, `--focus "objective"`, `--scope "path1,path2"`. They are agent-interpreted conventions, not a CLI parser. Accept only positive finite budgets, with whole-number iterations. Reject unknown flags. Explicit limits replace normal defaults; under `--lite` they may only lower its ceilings. Reject conflicting larger limits. Nothing allows an unlimited run. On an unknown flag, an invalid or unlimited budget, or a conflict, stop before reading further or editing: name the problem and suggest the valid form. Don't substitute a default and continue.
+Optional flags: `--auto`, `--mode polish|optimise`, `--lite`, `--iterations N`, `--minutes N`, `--focus "objective"`, `--scope "path1,path2"`. They are agent-interpreted conventions, not a CLI parser. Accept only positive finite budgets, with whole-number iterations. Reject unknown flags. Explicit limits replace normal defaults; under `--lite` they may only lower its ceilings. Reject conflicting larger limits. Nothing allows an unlimited run. On an unknown flag, an invalid or unlimited budget, or a conflict, stop before reading further or editing: name the problem and suggest the valid form. Don't substitute a default and continue.
 
 Lite uses the current model, one candidate at a time and short notes. Don't spawn reviewers, change provider or add tooling just to run the loop. Keep necessary checks. Don't bypass rate limits or assume that a free model is capable of every task. Report unknown usage as unknown.
 
-Before editing, read only the relevant reference: [polish](refs/polish.md) or [optimisation protocol](refs/protocol.md). Read the matching section of [UI recipes](refs/recipes.md) when useful. Don't load research or the entire package into every attempt.
+Before editing, read only the relevant reference: [guided](refs/guided.md), [polish](refs/polish.md) or [optimisation protocol](refs/protocol.md). Read the matching section of [UI recipes](refs/recipes.md) when useful. Don't load research or the entire package into every attempt.
 
 ## The working loop
 

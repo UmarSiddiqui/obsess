@@ -9,7 +9,7 @@
       "name": "obsess",
       "source": "./",
       "description": "Point your agent at one detail. It checks its own work, keeps the best-supported version and stops on purpose.",
-      "version": "0.3.0",
+      "version": "0.4.0",
       "license": "MIT",
       "keywords": ["skill", "ui-polish", "perfectionist", "attention-to-detail"]
     }

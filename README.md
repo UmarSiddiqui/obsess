@@ -8,7 +8,7 @@
 <h1 align="center">/obsess: perfectionist mode for your AI coding agent</h1>
 
 <p align="center">
-  <strong>Point your agent at one thing that isn't quite right.<br>It checks its own work, keeps the best version and stops on purpose.</strong>
+  <strong>Point your agent at one thing that isn't quite right. It shows you variants side by side and asks "1 or 2?"<br>You pick, it narrows in, checks everything still works and remembers your taste.</strong>
 </p>
 
 <p align="center">
@@ -16,7 +16,7 @@
   <a href="INSTALL.md"><img src="https://img.shields.io/badge/works%20with-40%2B%20agents-111111?style=flat-square" alt="Works with 40+ coding agents"></a>
   <a href="https://agentskills.io/specification"><img src="https://img.shields.io/badge/format-Agent%20Skills-111111?style=flat-square" alt="Agent Skills format"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-111111?style=flat-square" alt="MIT license"></a>
-  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.3.0-111111?style=flat-square" alt="Version 0.3.0"></a>
+  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.4.0-111111?style=flat-square" alt="Version 0.4.0"></a>
 </p>
 
 <p align="center">
@@ -24,7 +24,7 @@
 </p>
 
 <p align="center">
-  <a href="#install">Install</a> · <a href="#before--after">Before / after</a> · <a href="#tested-with-real-agent-runs">Test results</a> · <a href="#how-it-works">How it works</a> · <a href="#commands">Commands</a> · <a href="#faq">FAQ</a>
+  <a href="#install">Install</a> · <a href="#a-guided-session">Guided session</a> · <a href="#before--after">Before / after</a> · <a href="#tested-with-real-agent-runs">Test results</a> · <a href="#how-it-works">How it works</a> · <a href="#commands">Commands</a> · <a href="#faq">FAQ</a>
 </p>
 
 ---
@@ -38,6 +38,38 @@ You know the moment. You ask for one small thing. The agent edits three files, s
 `/obsess` is the opposite. One target. It looks at the thing before touching it, makes one justified change at a time, checks each attempt against the best so far, throws away regressions and stops when there's nothing real left to improve. Then it tells you exactly what it checked and what it couldn't.
 
 **Not a redesign. Not an endless loop. Just unreasonable attention to the thing you picked.**
+
+## A guided session
+
+An eye test for your UI. The agent can't tell what "smooth" or "premium" means to you, so it stops guessing and asks.
+
+```text
+you    /obsess over this toggle and make the transition super smooth
+
+agent  Smoother how? a) softer start and stop  b) snappier  c) a little overshoot  d) you pick
+you    a
+
+agent  Three working variants, same toggle, same recording. compare.html is open.
+         1  current: snaps when switched off
+         2  220ms ease-out
+         3  320ms ease-in-out
+       1, 2 or 3?
+you    2, but a touch faster
+
+agent  2a 180ms · 2b 200ms · 2c 220ms, all ease-out. Reversal mid-animation checked on each.
+you    2b
+
+agent  Done. 200ms ease-out, applied to Toggle.css only. Keyboard, reduced motion and the
+       two other switches that share this style all checked. Saved to .obsess/taste.md:
+       "toggle motion: 200ms ease-out; rejected overshoot and anything over 300ms."
+```
+
+- **You judge taste, it does the work.** Every variant is real, working code in an isolated copy, checked before you see it.
+- **One thing at a time.** Each round changes one dimension (timing, easing, spacing, weight), so your pick means something.
+- **It remembers.** Your picks go to `.obsess/taste.md`, so next time it starts closer to what you like.
+- **Not around?** `--auto` (or any unattended run) decides by the checks alone, never by imagined taste, and leaves the variants for you to pick later.
+
+The illustration above shows the protocol; transcripts of real guided runs are in [evals/live/](evals/live/RESULTS.md).
 
 ## Install
 

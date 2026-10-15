@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>obsess: which is better?</title>
+<!--
+  Side-by-side compare page for a guided /obsess session.
+  Copy it into the run folder, fill in the VARIANTS block below and open it in a browser.
+  Each variant shows an image, a video (recording of motion) or a live page (iframe).
+  The person picks with the mouse or the number keys, then tells the agent their pick.
+-->
+<script id="variants" type="application/json">
+{
+  "target": "Email notifications toggle: transition",
+  "question": "Which feels smoother?",
+  "variants": [
+    { "id": "0", "label": "Current", "note": "Snaps when switched off", "kind": "image", "src": "variant-0.png" },
+    { "id": "1", "label": "Softer", "note": "260ms ease-in-out", "kind": "image", "src": "variant-1.png" },
+    { "id": "2", "label": "Snappier", "note": "160ms ease-out", "kind": "image", "src": "variant-2.png" }
+  ]
+}
+</script>
+<style>
+  :root { --bg: #f7f5f1; --panel: #ffffff; --ink: #1d1b19; --muted: #6b655e; --line: #e4ded5; --pick: #d9480f; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #141312; --panel: #1e1c1a; --ink: #f2eee8; --muted: #a39b91; --line: #34302c; --pick: #ff8a4c; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 system-ui, sans-serif; padding: 20px max(16px, env(safe-area-inset-left)); }
+  header { max-width: 1400px; margin: 0 auto 16px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .target { color: var(--muted); font-size: 13px; text-transform: uppercase; letter-spacing: .08em; }
+  .grid { max-width: 1400px; margin: 0 auto; display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+  .card { background: var(--panel); border: 2px solid var(--line); border-radius: 14px; overflow: hidden; cursor: pointer; display: flex; flex-direction: column; }
+  .card:focus-visible, .card.picked { border-color: var(--pick); outline: none; }
+  .media { background: #0000000d; display: grid; place-items: center; min-height: 200px; }
+  .media img, .media video { max-width: 100%; display: block; }
+  .media iframe { width: 100%; height: 420px; border: 0; background: #fff; }
+  .meta { padding: 10px 14px 12px; display: grid; gap: 2px; }
+  .num { font-weight: 800; font-size: 18px; }
+  .note { color: var(--muted); font-size: 13px; }
+  footer { max-width: 1400px; margin: 16px auto 0; padding: 12px 14px; border: 1px dashed var(--line); border-radius: 12px; color: var(--muted); }
+  footer b { color: var(--ink); }
+</style>
+</head>
+<body>
+<header>
+  <div class="target" id="target"></div>
+  <h1 id="question"></h1>
+</header>
+<main class="grid" id="grid"></main>
+<footer id="answer">Click a variant or press its number. Then tell your agent your pick, or say what's off.</footer>
+<script>
+  const data = JSON.parse(document.getElementById('variants').textContent);
+  document.getElementById('target').textContent = data.target || '';
+  document.getElementById('question').textContent = data.question || 'Which is better?';
+  const grid = document.getElementById('grid');
+  const answer = document.getElementById('answer');
+  const cards = data.variants.map((v) => {
+    const card = document.createElement('article');
+    card.className = 'card';
+    card.tabIndex = 0;
+    const media = document.createElement('div');
+    media.className = 'media';
+    let el;
+    if (v.kind === 'video') { el = document.createElement('video'); el.src = v.src; el.loop = true; el.muted = true; el.autoplay = true; el.playsInline = true; }
+    else if (v.kind === 'page') { el = document.createElement('iframe'); el.src = v.src; el.title = `Variant ${v.id}`; }
+    else { el = document.createElement('img'); el.src = v.src; el.alt = `Variant ${v.id}: ${v.label}`; }
+    media.append(el);
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+    meta.innerHTML = '<span class="num"></span><span class="note"></span>';
+    meta.querySelector('.num').textContent = `${v.id} · ${v.label}`;
+    meta.querySelector('.note').textContent = v.note || '';
+    card.append(media, meta);
+    const pick = () => {
+      cards.forEach((c) => c.classList.toggle('picked', c === card));
+      answer.innerHTML = '';
+      answer.append('Tell your agent: ');
+      const b = document.createElement('b');
+      b.textContent = `"${v.id}"`;
+      answer.append(b, ' (or say what you would change about it).');
+    };
+    card.addEventListener('click', pick);
+    card.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(); } });
+    card._pick = pick;
+    card._id = String(v.id);
+    grid.append(card);
+    return card;
+  });
+  document.addEventListener('keydown', (e) => {
+    const c = cards.find((k) => k._id === e.key);
+    if (c) { c.focus(); c._pick(); }
+  });
+</script>
+</body>
+</html>
