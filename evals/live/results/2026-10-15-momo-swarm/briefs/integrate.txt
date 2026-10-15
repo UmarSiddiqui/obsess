@@ -1,0 +1,20 @@
+/obsess --auto --focus "integrate the specialists' work and ship a production-quality build"
+
+This is a Nepali momo stall tycoon game (Three.js, straight-down overhead camera, static files, no build step). Four specialists just changed it in parallel: art (js/world.js), UI and mobile (index.html, js/ui.js), gameplay and balance (js/sim.js, js/data.js, tests/*.mjs), and sound (js/sfx.js). Their work is merged in the latest commit. You own every file now. Work unattended: don't ask questions, decide by checks, finish, and don't leave background watchers or processes running when you are done.
+
+Integrate and fix, in this order:
+1. On phones the first-run tour card covers the street and queue, where the player needs to tap. Place tour cards so they never cover the play floor (for example dock them over the bottom panel or the HUD), on 390x844, 844x390 and desktop.
+2. js/main.js uses window.confirm() for "New game"; replace it with an in-page confirmation (no alert/confirm/prompt anywhere).
+3. At the restaurant stage the front-row steamer badges cover the shop sign; fix the overlap.
+4. Wire in the new sounds from js/sfx.js: steam when a batch is ready, achievement and expand sounds, and the ambient loop (start after the first user gesture, follow the mute toggle).
+5. Surface the new gameplay: show a clear banner or HUD indicator during a festival rush (Dashain or Tihar), and make tourists and students visibly different in the world (for example a backpack or a different hat), using the customer kind the sim now provides.
+6. Look for any other integration bugs between the four changes and fix them.
+
+Checks you must pass before finishing (run them, don't assume):
+- node tests: for f in tests/*.mjs; do node $f; done (all pass)
+- The black-box grader, which must report all checks true:
+  MIN_PITCH=80 NODE_PATH=/opt/node22/lib/node_modules node /home/user/obsess/evals/live/grade_topview.js . <scratch>/momo/swarm/integrate-grade <scratch>/momo/tv/three/three.module.js
+  It starts a new game (the first-run tour will show; the floor must stay uncovered), plays a serve loop, reloads a save and checks five views. Treat its failures as real bugs to fix, not as a grader to edit.
+- Screenshots at 1440x900, 844x390 and 390x844 for all three stages that you have looked at.
+
+Local tooling: Chromium at /opt/pw-browsers/chromium, Playwright installed globally. jsDelivr is blocked here; route three.module.js to <scratch>/momo/three/node_modules/three/build/three.module.js for testing. Keep the shipped code loading Three.js from the CDN. Headless rendering runs at about 2 fps, so game time is slow in tests.

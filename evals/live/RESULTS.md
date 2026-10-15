@@ -94,6 +94,18 @@ A one-off, single-run comparison on a whole-game brief with Haiku 5.5. With /obs
 
 Four Haiku 5.5 runs from identical starting code, two per condition, graded by a black-box browser grader (camera pitch, floor visibility under the UI on five screen sizes, a real serve loop, save and reload, errors). All four scored 5/5; the untouched game scores 3/5. No pass-rate difference; the best /obsess run had the most usability features, the worst had the most visual noise. Details: [top-down view](results/2026-10-15-momo-topview/README.md).
 
+## Fully overhead: Momo Tycoon
+
+One Haiku 5.5 run with /obsess moved the best top-down build to a straight-down orthographic camera. It scored 5/5 at `MIN_PITCH=80`, at a cost of 27 minutes and about $2.90. Details: [overhead](results/2026-10-15-momo-overhead/README.md).
+
+## Swarm: Momo Tycoon, production pass
+
+Four Haiku 5.5 specialists (art, UI, gameplay, sound) ran in parallel with scoped `/obsess --auto` briefs, then an integration agent merged their work. The result scored 5/5 at `MIN_PITCH=80` with all node tests passing, for about $1.73 in total. Details: [swarm](results/2026-10-15-momo-swarm/README.md).
+
+## Guided sessions
+
+Real two-turn conversations on the toggle fixture with Haiku 5.5. Turn 1 had to show variants and ask; turn 2 ("2, but a touch softer") had to start a new round without touching the real file. After the protocol fix, turn 1 was correct in 4/4 runs and the full loop in 3/4. Details: [guided sessions](results/2026-10-15-guided-sessions/README.md).
+
 ## Limits
 
 - Two runs per cell; one model family; one agent (Claude Code). Other agents weren't run live.

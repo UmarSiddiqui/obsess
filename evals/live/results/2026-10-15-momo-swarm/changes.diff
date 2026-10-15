@@ -1,0 +1,2433 @@
+diff --git a/index.html b/index.html
+index 4f5aeea..ce8cee6 100644
+--- a/index.html
++++ b/index.html
+@@ -22,7 +22,8 @@
+       --red: #c8322a;
+       --green: #5ccb74;
+       --cream: #fff4df;
+-      --muted: #d1ae8c;
++      --muted: #e0bf9b;
++      --focus: #ffd27a;
+       --shadow: 0 14px 40px rgba(20, 8, 2, 0.45);
+       --radius: 16px;
+       /* Set from JavaScript on every layout pass (see layout() in js/main.js). */
+@@ -43,6 +44,9 @@
+       -webkit-tap-highlight-color: transparent;
+     }
+     button { font: inherit; color: inherit; }
++    /* Keyboard focus is always visible; mouse and touch presses do not draw a ring. */
++    button:focus:not(:focus-visible) { outline: none; }
++    :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+ 
+     #scene {
+       position: fixed;
+@@ -75,7 +79,7 @@
+       padding: 10px 14px;
+       z-index: 5;
+     }
+-    .hud-main { flex: none; min-width: 160px; }
++    .hud-main { flex: none; min-width: 160px; position: relative; }
+     .stage-name { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); display: flex; justify-content: space-between; gap: 8px; }
+     .stage-name .ne { font-family: "Noto Sans Devanagari", system-ui, sans-serif; text-transform: none; letter-spacing: 0; font-size: 13px; color: #f3c98e; }
+     #money {
+@@ -88,6 +92,32 @@
+       margin: 2px 0 0;
+       font-variant-numeric: tabular-nums;
+       white-space: nowrap;
++      transform-origin: left center;
++    }
++    /* Money feedback: the total pulses green on income and red on spending, with a +/- chip. */
++    #money.pulse-up { animation: pulseUp 0.6s ease; }
++    #money.pulse-down { animation: pulseDown 0.6s ease; }
++    @keyframes pulseUp { 0% { transform: scale(1); } 30% { transform: scale(1.1); color: #c9f7d3; } 100% { transform: scale(1); } }
++    @keyframes pulseDown { 0% { transform: scale(1); } 30% { transform: scale(0.94); color: #ffb3a4; } 100% { transform: scale(1); } }
++    .money-chip {
++      position: absolute;
++      left: calc(100% + 6px);
++      top: 2px;
++      padding: 3px 9px;
++      border-radius: 999px;
++      font-size: 13px;
++      font-weight: 700;
++      white-space: nowrap;
++      pointer-events: none;
++      animation: chipFloat 1.5s ease-out forwards;
++    }
++    .money-chip.up { background: #1f7a3b; color: #f4fff6; }
++    .money-chip.down { background: #a8261c; color: #fff; }
++    @keyframes chipFloat {
++      0% { opacity: 0; transform: translateY(4px) scale(0.9); }
++      12% { opacity: 1; transform: none; }
++      80% { opacity: 1; }
++      100% { opacity: 0; transform: translateY(-8px); }
+     }
+     .hud-meters { flex: 1; min-width: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 4px 18px; }
+     .meter-row { display: flex; justify-content: space-between; align-items: baseline; font-size: 12px; color: var(--muted); gap: 8px; white-space: nowrap; overflow: hidden; }
+@@ -194,7 +224,10 @@
+     .btn.ghost { background: rgba(255, 255, 255, 0.1); color: var(--cream); box-shadow: none; border: 1px solid var(--panel-edge); }
+     .btn.on { background: linear-gradient(180deg, #5ccb74, #2f9b4f); color: #0f2a16; box-shadow: 0 3px 0 #1b5d2d; }
+     .btn.danger { background: linear-gradient(180deg, #e0553d, #a8261c); color: #fff; box-shadow: 0 3px 0 #5e120c; }
+-    .btn:disabled { background: rgba(255, 255, 255, 0.12); color: rgba(255, 244, 223, 0.45); box-shadow: none; cursor: not-allowed; }
++    /* Disabled buttons stay readable: the small line says why (e.g. "Need Rs 350"). */
++    .btn:disabled { background: rgba(255, 255, 255, 0.1); color: rgba(255, 244, 223, 0.72); box-shadow: none; cursor: not-allowed; }
++    .btn:disabled small { color: #ffd98f; opacity: 1; }
++    .btn.wide { width: 100%; }
+     .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+     .menu-card { padding: 10px; border-radius: 12px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 205, 130, 0.12); display: flex; flex-direction: column; gap: 6px; }
+     .menu-card.selected { border-color: var(--green); box-shadow: 0 0 0 1px var(--green) inset; }
+@@ -225,6 +258,10 @@
+     .stage-card.current { border-color: var(--green); }
+     .stage-card .req { font-size: 12px; color: var(--muted); margin: 6px 0 10px; line-height: 1.4; }
+     .stage-card .req b { color: var(--cream); }
++    .stage-card .ne { font-family: "Noto Sans Devanagari", system-ui, sans-serif; color: #f3c98e; }
++    .stage-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 4px; }
++    .stage-title { font-size: 15px; font-weight: 700; color: var(--cream); }
++    .panel-note { margin: 12px 2px 0; line-height: 1.4; color: var(--muted); font-size: 12px; }
+ 
+     /* ---------- labels above customers and baskets ---------- */
+     #labels { position: fixed; inset: 0; pointer-events: none; z-index: 3; overflow: hidden; }
+@@ -307,6 +344,62 @@
+     #toasts { position: fixed; top: calc(var(--hud-h) + 12px); left: 50%; transform: translateX(-50%); display: grid; gap: 8px; z-index: 7; width: min(420px, calc(100vw - 32px)); pointer-events: none; }
+     .toast { padding: 11px 14px; border-radius: 14px; font-size: 13px; animation: toastIn 0.35s ease, toastOut 0.5s ease 3.1s forwards; box-shadow: var(--shadow); }
+     .toast b { display: block; font-size: 14px; margin-bottom: 2px; }
++    /* ---------- first-run tour: coach card and the ring that points at its target ---------- */
++    /* The tour card never sits on the play floor: on wide screens it docks at the foot of the side panel,
++       and on portrait phones it sits inside the bottom sheet, under the tabs (see body.sheet below). */
++    .coach {
++      position: fixed;
++      right: 12px;
++      bottom: 12px;
++      width: var(--panel-w);
++      max-height: calc(100vh - var(--hud-h) - 80px);
++      overflow-y: auto;
++      padding: 14px 16px;
++      z-index: 8;
++      border-color: var(--gold);
++    }
++    .festival {
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
++      align-self: flex-start;
++      margin-top: 5px;
++      padding: 3px 10px;
++      border-radius: 999px;
++      background: linear-gradient(90deg, #a8261c, #e0832a);
++      color: #fff8ea;
++      font-size: 12px;
++      font-weight: 700;
++      white-space: nowrap;
++      box-shadow: inset 0 0 0 1px rgba(255, 210, 122, 0.55);
++    }
++    .festival[hidden] { display: none; }
++    .festival .ne { font-family: "Noto Sans Devanagari", system-ui, sans-serif; font-weight: 600; }
++    .start-confirm { display: grid; gap: 12px; text-align: center; }
++    .start-confirm[hidden] { display: none; }
++    .start-confirm .confirm-title { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 22px; color: var(--gold); }
++    .start-confirm p { margin: 0; text-align: center; }
++    .coach[hidden], .coach-ring[hidden] { display: none; }
++    .coach-step { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: #f3c98e; }
++    .coach-title { margin: 4px 0; font-family: Georgia, "Times New Roman", serif; font-size: 19px; color: var(--gold); }
++    .coach-text { margin: 0 0 12px; font-size: 14px; line-height: 1.45; color: var(--cream); }
++    .coach-actions { display: flex; justify-content: space-between; gap: 10px; }
++    .coach-actions .btn { min-width: 0; flex: 1; }
++    .coach-actions .btn.ghost { flex: 0 0 auto; }
++    .coach-ring {
++      position: fixed;
++      left: 0;
++      top: 0;
++      width: 56px;
++      height: 56px;
++      border-radius: 50%;
++      border: 3px solid var(--gold);
++      box-shadow: 0 0 0 4px rgba(255, 210, 122, 0.25), 0 0 22px rgba(255, 210, 122, 0.55);
++      pointer-events: none;
++      z-index: 6;
++      animation: ringGlow 1.4s ease-in-out infinite; /* opacity only: transform is set from JS */
++    }
++    @keyframes ringGlow { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+     .toast.good { background: linear-gradient(180deg, #3c2412, #241107); border: 1px solid var(--gold); color: var(--cream); }
+     .toast.good b { color: var(--gold); }
+     .toast.warn { background: #4a1510; border: 1px solid #e0553d; color: #ffe2dc; }
+@@ -334,6 +427,7 @@
+     .start-card p { font-size: 14px; line-height: 1.5; color: var(--muted); margin: 8px 0; text-align: left; }
+     .start-card ul { text-align: left; font-size: 13px; line-height: 1.6; color: var(--cream); padding-left: 18px; margin: 10px 0 18px; }
+     .start-actions { display: grid; gap: 10px; }
++    .start-actions[hidden] { display: none; }
+     .start-actions .btn { width: 100%; padding: 14px; font-size: 16px; }
+     .prayer-strip { display: flex; justify-content: center; gap: 6px; margin-bottom: 14px; }
+     .prayer-strip i { width: 16px; height: 20px; clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 85%, 0 100%); }
+@@ -345,7 +439,7 @@
+     body.sheet .hud-meters { order: 3; flex-basis: 100%; gap: 0 14px; }
+     body.sheet .meter { margin-top: 3px; }
+     body.sheet .hud-actions { order: 2; }
+-    body.sheet .icon-btn { height: 34px; min-width: 34px; padding: 0 9px; font-size: 12px; }
++    body.sheet .icon-btn { height: 40px; min-width: 40px; padding: 0 12px; font-size: 14px; }
+     body.sheet #panel { top: auto; left: 0; right: 0; bottom: 0; width: auto; height: var(--sheet-h); border-radius: 18px 18px 0 0; }
+     body.sheet .sheet-toggle {
+       display: flex;
+@@ -353,42 +447,90 @@
+       justify-content: center;
+       gap: 8px;
+       width: 100%;
+-      height: 26px;
++      height: 40px;
+       flex: none;
+       border: 0;
+       background: transparent;
+       color: var(--muted);
+-      font-size: 12px;
++      font-size: 13px;
+       cursor: pointer;
+       padding: 0;
+     }
+-    body.sheet .sheet-toggle i { width: 44px; height: 4px; border-radius: 4px; background: rgba(255, 255, 255, 0.32); }
++    body.sheet .sheet-toggle i { width: 44px; height: 4px; border-radius: 4px; background: rgba(255, 255, 255, 0.4); }
+     body.sheet .tabs { padding: 4px 8px 8px; }
+     body.sheet.collapsed #panel-body { display: none; }
+     body.sheet #earned-text { display: none; }
+     body.sheet .stage-name .ne { display: none; }
+-    body.sheet .basket-badge { font-size: 10px; padding: 4px 7px; }
+-    body.sheet .cust-label { min-width: 0; padding: 5px 8px 6px; }
++    body.sheet .basket-badge { font-size: 12px; padding: 4px 9px; }
++    body.sheet .cust-label { min-width: 0; padding: 6px 9px 7px; }
+     body.sheet .cust-label .cl-name { display: none; }
+-    body.sheet .cust-label .cl-order { font-size: 12px; margin-top: 0; }
++    body.sheet .cust-label .cl-order { font-size: 14px; margin-top: 0; }
+     body.sheet .cust-label .cl-bar { margin-top: 3px; }
++    /* Phones and short landscape screens: larger text, and every tap target at least 40px. */
++    /* Inside the sheet: below the menu toggle and tabs (about 100px), so the tabs stay tappable. */
++    body.sheet .coach { left: 12px; right: 12px; bottom: 12px; width: auto; max-height: calc(var(--sheet-h) - 112px); }
++    /* A folded sheet has no room for the card, so the tour waits until the menu opens. */
++    body.sheet.collapsed .coach { display: none; }
+     /* Narrower screens keep the top bar to one row; total earned is on the Expand tab. */
+     @media (max-width: 1140px) {
+       #earned-text { display: none; }
+       .hud-meters { gap: 4px 12px; }
+     }
++    /* Phones and short landscape screens: larger text, and every tap target at least 40px. */
++    @media (max-width: 900px), (max-height: 500px) {
++      .icon-btn { height: 40px; min-width: 40px; font-size: 14px; }
++      #zoom .icon-btn { width: 40px; height: 40px; min-width: 40px; font-size: 20px; }
++      #zoom #zoom-fit { font-size: 13px; }
++      .tab { min-height: 42px; font-size: 14px; padding: 8px 2px; }
++      .btn { min-height: 40px; min-width: 96px; padding: 10px 12px; font-size: 14px; }
++      .btn small { font-size: 12px; }
++      .start-actions .btn { min-height: 52px; font-size: 17px; }
++      .row .name, .basket-row .name, .menu-card .name { font-size: 16px; }
++      .row .desc, .basket-row .status, .menu-card .stats, .muted, .panel-note { font-size: 13px; }
++      .section-title { font-size: 13px; }
++      .meter-row, .stage-name { font-size: 13px; }
++      .stat span { font-size: 12px; }
++      .stat b { font-size: 18px; }
++      .ach .t { font-size: 15px; }
++      .ach .d { font-size: 12px; }
++      .toast { font-size: 14px; }
++      .coach-step { font-size: 12px; }
++      .coach-title { font-size: 21px; }
++      .coach-text { font-size: 15px; }
++      .basket-badge { position: absolute; font-size: 13px; padding: 5px 11px; }
++      /* The visible pill stays small; this invisible area makes the whole target 40px. */
++      .basket-badge::before { content: ""; position: absolute; inset: -8px -10px; }
++      .cust-label .cl-order { font-size: 14px; }
++      .cust-label .cl-name { font-size: 13px; }
++      .start-card h1 { font-size: 46px; }
++      .start-card p, .start-card ul { font-size: 15px; }
++    }
++    /* Short landscape screens: the top bar must still fit its meters beside the buttons. */
++    @media (max-height: 500px) {
++      #hud { gap: 10px; }
++      .hud-main { min-width: 0; }
++      #money { font-size: 24px; }
++      .hud-meters { gap: 4px 10px; }
++      .meter-row, .stage-name { font-size: 12px; }
++      .icon-btn { padding: 0 10px; }
++      .coach { padding: 10px 14px; right: 10px; bottom: 10px; }
++      .coach-step { font-size: 10px; }
++      .coach-title { font-size: 16px; margin: 2px 0; }
++      .coach-text { font-size: 13px; line-height: 1.35; margin-bottom: 8px; }
++    }
+     @media (prefers-reduced-motion: reduce) {
+-      .float, .toast { animation-duration: 0.01s; }
++      .float, .toast, .money-chip, #money.pulse-up, #money.pulse-down, .coach-ring { animation-duration: 0.01s; animation-iteration-count: 1; }
+     }
+   </style>
+ </head>
+ <body>
+   <canvas id="scene" aria-label="Momo stall in Kathmandu"></canvas>
+ 
+-  <div id="hud" class="card" aria-live="polite">
++  <div id="hud" class="card">
+     <div class="hud-main">
+       <div class="stage-name"><span id="stage-name">Street Stall</span><span class="ne" id="stage-ne"></span></div>
+       <div id="money">Rs 0</div>
++      <div class="festival" id="festival" role="status" hidden></div>
+     </div>
+     <div class="hud-meters">
+       <div class="meter-row"><span>Reputation</span><b id="rep-text">40</b></div>
+@@ -423,6 +565,17 @@
+   <div id="fx"></div>
+   <div id="toasts" aria-live="polite"></div>
+ 
++  <section id="coach" class="coach card" role="dialog" aria-labelledby="coach-title" aria-describedby="coach-text" hidden>
++    <div class="coach-step" id="coach-step">Tip 1 of 4</div>
++    <h2 class="coach-title" id="coach-title"></h2>
++    <p class="coach-text" id="coach-text"></p>
++    <div class="coach-actions">
++      <button class="btn ghost" id="coach-skip" type="button">Skip tour</button>
++      <button class="btn" id="coach-next" type="button">Next</button>
++    </div>
++  </section>
++  <div id="coach-ring" class="coach-ring" aria-hidden="true" hidden></div>
++
+   <div id="start">
+     <div class="start-card card">
+       <div class="prayer-strip" aria-hidden="true">
+@@ -438,10 +591,18 @@
+         <li>Upgrade steamers, unlock jhol, C-momo and fried momo, hire staff.</li>
+         <li>Pay wages and rent every payday. Keep your reputation up.</li>
+       </ul>
+-      <div class="start-actions">
++      <div class="start-actions" id="start-actions">
+         <button class="btn" id="btn-continue" hidden>Continue</button>
+         <button class="btn ghost" id="btn-new">New game</button>
+       </div>
++      <div class="start-confirm" id="start-confirm" role="alertdialog" aria-labelledby="confirm-title" aria-describedby="confirm-text" hidden>
++        <h2 class="confirm-title" id="confirm-title">Start a new stall?</h2>
++        <p id="confirm-text">Your current progress will be erased.</p>
++        <div class="start-actions">
++          <button class="btn danger" id="confirm-yes">Erase and start</button>
++          <button class="btn ghost" id="confirm-no">Keep my stall</button>
++        </div>
++      </div>
+     </div>
+   </div>
+ 
+diff --git a/js/data.js b/js/data.js
+index f17862d..ce2e119 100644
+--- a/js/data.js
++++ b/js/data.js
+@@ -6,6 +6,36 @@ export const MAX_SLOTS = 8;
+ export const BASE_SPAWN_SECONDS = 7;
+ export const BASKET_BASE_COST = 250;
+ 
++export const START_MONEY = 60;
++
++// Customer kinds share the queue. `weight` is their share of arrivals, `patience` scales
++// how long they wait, and `tip` adds to what they pay on top of the menu price.
++export const CUSTOMER_KINDS = {
++  local: {
++    name: 'Local', ne: 'स्थानीय', weight: 6, patience: 1, tip: 0,
++    desc: 'Neighbours who know the menu and pay the usual price.',
++  },
++  tourist: {
++    name: 'Tourist', ne: 'पर्यटक', weight: 2, patience: 1, tip: 0.3,
++    desc: 'Visitors who tip generously for a hot plate.',
++  },
++  student: {
++    name: 'Student', ne: 'विद्यार्थी', weight: 2, patience: 0.6, tip: 0,
++    desc: 'Hungry students between classes. They walk off quickly.',
++  },
++};
++
++// Festival rush: every FESTIVAL_EVERY_SECONDS a festival lasts FESTIVAL_SECONDS and
++// multiplies customer arrivals. Tourists are more likely during it.
++export const FESTIVAL_EVERY_SECONDS = 480;
++export const FESTIVAL_SECONDS = 90;
++export const FESTIVAL_SPAWN = 1.8;
++export const FESTIVAL_TOURIST_WEIGHT = 2;
++export const FESTIVALS = [
++  { name: 'Dashain', ne: 'दशैं', desc: 'The big family festival: the street fills with visitors and the queue grows fast.' },
++  { name: 'Tihar', ne: 'तिहार', desc: 'Festival of lights: lanterns, crowds and everyone wants a quick bite.' },
++];
++
+ export const ITEM_ORDER = ['steamed', 'jhol', 'cmomo', 'fried'];
+ 
+ export const ITEMS = {
+@@ -59,7 +89,7 @@ export const DECOR = {
+ 
+ export const STAFF = {
+   cook: {
+-    name: 'Chef', ne: 'कुक', hire: 600, wage: 25, max: 2,
++    name: 'Chef', ne: 'कुक', hire: 900, wage: 25, max: 2,
+     desc: 'Loads empty steamers with whatever sells most and pulls finished momos out.',
+   },
+   waiter: {
+@@ -69,9 +99,9 @@ export const STAFF = {
+ };
+ 
+ export const STAGES = [
+-  { name: 'Street Stall', ne: 'गल्ली ठेला', cost: 0, rep: 0, maxBaskets: 3, maxQueue: 3, spawn: 1, rent: 0 },
+-  { name: 'Little Shop', ne: 'सानो पसल', cost: 6000, rep: 35, maxBaskets: 5, maxQueue: 6, spawn: 1.5, rent: 30 },
+-  { name: 'Busy Restaurant', ne: 'व्यस्त रेस्टुरेन्ट', cost: 35000, rep: 60, maxBaskets: 8, maxQueue: 10, spawn: 2.1, rent: 80 },
++  { name: 'Street Stall', ne: 'गल्ली ठेला', cost: 0, rep: 0, maxBaskets: 3, maxQueue: 3, spawn: 0.8, rent: 0 },
++  { name: 'Little Shop', ne: 'सानो पसल', cost: 6000, rep: 35, maxBaskets: 5, maxQueue: 6, spawn: 1.2, rent: 30 },
++  { name: 'Busy Restaurant', ne: 'व्यस्त रेस्टुरेन्ट', cost: 50000, rep: 60, maxBaskets: 8, maxQueue: 10, spawn: 1.4, rent: 80 },
+ ];
+ 
+ export const ACHIEVEMENTS = [
+diff --git a/js/main.js b/js/main.js
+index 9a52ee4..8209913 100644
+--- a/js/main.js
++++ b/js/main.js
+@@ -5,6 +5,7 @@ import {
+ } from './sim.js';
+ import { createWorld } from './world.js';
+ import { createUI } from './ui.js';
++import { sfx } from './sfx.js';
+ 
+ const canvas = document.getElementById('scene');
+ const startEl = document.getElementById('start');
+@@ -22,8 +23,11 @@ let state = newGame();
+ let started = false;
+ let lastSave = 0;
+ let lastFrame = performance.now();
++let lastFestOn = false;
+ 
+ const ui = createUI({ act });
++// Ambient madal loop: it waits for the first tap or key, then follows the sound toggle.
++sfx.startAmbient();
+ 
+ // ---------- actions from UI and canvas taps ----------
+ 
+@@ -182,10 +186,36 @@ function beginGame(fresh) {
+ }
+ 
+ btnContinue.addEventListener('click', () => beginGame(false));
+-btnNew.addEventListener('click', () => {
+-  if (!btnContinue.hidden && !window.confirm('Start a new stall? Your current progress will be erased.')) return;
++
++// "New game" over a saved stall asks first, inside the start card (no browser dialogs).
++const startActions = document.getElementById('start-actions');
++const confirmBox = document.getElementById('start-confirm');
++const btnConfirmYes = document.getElementById('confirm-yes');
++const btnConfirmNo = document.getElementById('confirm-no');
++
++function askNewGame() {
++  if (btnContinue.hidden) {
++    beginGame(true); // nothing saved, so nothing to lose
++    return;
++  }
++  startActions.hidden = true;
++  confirmBox.hidden = false;
++  btnConfirmNo.focus();
++}
++function closeConfirm() {
++  confirmBox.hidden = true;
++  startActions.hidden = false;
++  btnNew.focus();
++}
++btnNew.addEventListener('click', askNewGame);
++btnConfirmYes.addEventListener('click', () => {
++  closeConfirm();
+   beginGame(true);
+ });
++btnConfirmNo.addEventListener('click', closeConfirm);
++document.addEventListener('keydown', (e) => {
++  if (e.key === 'Escape' && !confirmBox.hidden) closeConfirm();
++});
+ btnMenu.addEventListener('click', () => {
+   if (!started) return;
+   saveGame(state);
+@@ -222,6 +252,12 @@ function frame(now) {
+   world.update(state, dt, now / 1000);
+   world.render();
+   ui.frame(state, world, dt);
++  // The festival chip makes the HUD taller, which moves the top of the play area: re-frame when it toggles.
++  const festOn = state.festival.left > 0;
++  if (festOn !== lastFestOn) {
++    lastFestOn = festOn;
++    layout();
++  }
+ 
+   if (started && now - lastSave > 4000) {
+     saveGame(state);
+diff --git a/js/sfx.js b/js/sfx.js
+index dfaf4dd..fee0696 100644
+--- a/js/sfx.js
++++ b/js/sfx.js
+@@ -1,7 +1,25 @@
+-// Tiny WebAudio synth for coin, ding and pop sounds. No audio files.
++// WebAudio synth for the game's sounds. Everything is generated at runtime; no audio files.
++// Nothing sounds, and no AudioContext is created, until the player first interacts with the page,
++// so calling any of these early is a safe no-op. Tones lean on a pentatonic set (Do Re Mi Sol La)
++// for a folk, Nepali flavour, and every level is kept low so nothing gets harsh.
+ const MUTE_KEY = 'momo-tycoon-muted';
++const GESTURES = ['pointerdown', 'keydown', 'touchend'];
++const NOTE = {
++  C5: 523.25, D5: 587.33, E5: 659.25, G5: 783.99, A5: 880, C6: 1046.5, E6: 1318.51, G4: 392, A4: 440,
++};
++// Ambient madal pattern on a 16-step bar: D = low drum body, t = soft off-beat tak, . = rest.
++const MADAL = 'D.tt.D.t' + 'D.t.D..t';
++const AMB_BPM = 84;
++const STEP = 60 / AMB_BPM / 4;
++const AMB_LEVEL = 0.5;
++
+ let ctx = null;
++let master = null; // all sound goes through here: mute fades it, compressor keeps stacks gentle
++let noiseBuf = null;
+ let muted = false;
++let unlocked = false;
++let ambWanted = false; // startAmbient() was asked for, possibly before a gesture
++let amb = null; // running ambient loop: { bus, nodes, timer, step, next }
+ 
+ try {
+   muted = localStorage.getItem(MUTE_KEY) === '1';
+@@ -10,54 +28,252 @@ try {
+ }
+ 
+ function audio() {
++  if (!unlocked) return null;
+   if (!ctx) {
+     try {
+       ctx = new (window.AudioContext || window.webkitAudioContext)();
+     } catch {
+       return null;
+     }
++    const comp = ctx.createDynamicsCompressor();
++    comp.threshold.value = -18;
++    comp.knee.value = 12;
++    comp.ratio.value = 3;
++    comp.attack.value = 0.01;
++    comp.release.value = 0.2;
++    comp.connect(ctx.destination);
++    master = ctx.createGain();
++    master.gain.value = muted ? 0 : 0.8;
++    master.connect(comp);
+   }
+   if (ctx.state === 'suspended') ctx.resume();
+   return ctx;
+ }
+ 
+-function tone(freq, dur, type = 'sine', vol = 0.12, when = 0, slide = 0) {
++// Runs fn(ctx, now) for a one-shot unless muted or audio is unavailable.
++function play(fn) {
+   if (muted) return;
+   const a = audio();
+-  if (!a) return;
+-  const t = a.currentTime + when;
++  if (a) fn(a, a.currentTime);
++}
++
++// One enveloped oscillator at an absolute time. Soft attack avoids clicks.
++function voice(a, out, t, freq, dur, type, vol, slide = 0) {
+   const o = a.createOscillator();
+   const g = a.createGain();
+   o.type = type;
+   o.frequency.setValueAtTime(freq, t);
+   if (slide) o.frequency.exponentialRampToValueAtTime(freq * slide, t + dur);
+-  g.gain.setValueAtTime(vol, t);
++  g.gain.setValueAtTime(0.0001, t);
++  g.gain.exponentialRampToValueAtTime(vol, t + 0.008);
+   g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+-  o.connect(g).connect(a.destination);
++  o.connect(g).connect(out);
+   o.start(t);
+   o.stop(t + dur + 0.02);
+ }
+ 
++// A struck-bell tone: a warm fundamental plus a quieter octave that dies away faster.
++function bellAt(a, out, t, freq, dur, vol) {
++  voice(a, out, t, freq, dur, 'sine', vol);
++  voice(a, out, t, freq * 2, dur * 0.4, 'sine', vol * 0.22);
++}
++
++function noiseSource(a, t, dur) {
++  if (!noiseBuf) {
++    noiseBuf = a.createBuffer(1, a.sampleRate * 2, a.sampleRate);
++    const d = noiseBuf.getChannelData(0);
++    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
++  }
++  const src = a.createBufferSource();
++  src.buffer = noiseBuf;
++  src.start(t, Math.random(), dur);
++  return src;
++}
++
++// Madal hit: a palm strike on the drum head, a low body that bends down quickly.
++function madalAt(a, out, t, vol) {
++  voice(a, out, t, 150, 0.24, 'sine', vol, 0.45);
++  voice(a, out, t, 220, 0.07, 'triangle', vol * 0.25, 0.5);
++}
++
++function takAt(a, out, t, vol) {
++  const src = noiseSource(a, t, 0.04);
++  const bp = a.createBiquadFilter();
++  bp.type = 'bandpass';
++  bp.frequency.value = 2000;
++  bp.Q.value = 2;
++  const g = a.createGain();
++  g.gain.setValueAtTime(vol, t);
++  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.035);
++  src.connect(bp).connect(g).connect(out);
++}
++
++function startDrone(a, out) {
++  const lp = a.createBiquadFilter();
++  lp.type = 'lowpass';
++  lp.frequency.value = 520;
++  lp.Q.value = 0.5;
++  lp.connect(out);
++  // Slow filter wobble so the drone breathes instead of sitting still.
++  const lfo = a.createOscillator();
++  const lfoGain = a.createGain();
++  lfo.frequency.value = 0.05;
++  lfoGain.gain.value = 140;
++  lfo.connect(lfoGain).connect(lp.frequency);
++  const nodes = [lfo];
++  // D2, A2 and D3: root, fifth and octave, very quiet.
++  for (const [f, v] of [
++    [73.42, 0.035],
++    [110, 0.025],
++    [146.83, 0.012],
++  ]) {
++    const o = a.createOscillator();
++    const g = a.createGain();
++    o.type = 'triangle';
++    o.frequency.value = f;
++    g.gain.value = v;
++    o.connect(g).connect(lp);
++    nodes.push(o);
++  }
++  for (const n of nodes) n.start();
++  return nodes;
++}
++
++function scheduleAmbient() {
++  if (!amb || !ctx) return;
++  const a = ctx;
++  if (amb.next < a.currentTime - 0.5) amb.next = a.currentTime + 0.1; // tab was throttled, resync
++  // Muted: the master gain is already at zero, so skip building notes and keep the clock in step.
++  if (muted) {
++    amb.next = a.currentTime + 0.1;
++    return;
++  }
++  while (amb.next < a.currentTime + 0.15) {
++    const ch = MADAL[amb.step % MADAL.length];
++    if (ch === 'D') madalAt(a, amb.bus, amb.next, 0.09);
++    else if (ch === 't') takAt(a, amb.bus, amb.next, 0.02);
++    amb.next += STEP;
++    amb.step++;
++  }
++}
++
++function fadeMaster(v) {
++  if (!ctx || !master) return;
++  master.gain.setTargetAtTime(v, ctx.currentTime, 0.05);
++}
++
++function unlock() {
++  if (unlocked || typeof window === 'undefined') return;
++  unlocked = true;
++  for (const ev of GESTURES) window.removeEventListener(ev, unlock, true);
++  audio();
++  if (ambWanted) startAmbient();
++}
++
++if (typeof window !== 'undefined' && window.addEventListener) {
++  for (const ev of GESTURES) window.addEventListener(ev, unlock, true);
++}
++
++// Gentle loop: a sustained drone plus a soft madal pattern. Starts only after a gesture.
++// Returns true once the loop is running. Before a gesture it returns false, and the loop
++// starts by itself on the first gesture unless stopAmbient() is called first.
++export function startAmbient() {
++  ambWanted = true;
++  if (!unlocked) return false;
++  const a = audio();
++  if (!a) return false;
++  if (amb) return true;
++  const bus = a.createGain();
++  bus.gain.value = AMB_LEVEL;
++  bus.connect(master);
++  amb = {
++    bus,
++    nodes: startDrone(a, bus),
++    timer: setInterval(scheduleAmbient, 50),
++    step: 0,
++    next: a.currentTime + 0.1,
++  };
++  scheduleAmbient();
++  return true;
++}
++
++export function stopAmbient() {
++  ambWanted = false;
++  if (!amb) return;
++  const { bus, nodes, timer } = amb;
++  amb = null;
++  clearInterval(timer);
++  const t = ctx.currentTime;
++  bus.gain.setValueAtTime(bus.gain.value, t);
++  bus.gain.linearRampToValueAtTime(0, t + 0.4);
++  for (const n of nodes) n.stop(t + 0.45);
++  setTimeout(() => bus.disconnect(), 600);
++}
++
+ export const sfx = {
+   get muted() {
+     return muted;
+   },
+   setMuted(v) {
+     muted = v;
++    fadeMaster(v ? 0 : 0.8);
+     try {
+       localStorage.setItem(MUTE_KEY, v ? '1' : '0');
+     } catch {
+       /* ignore */
+     }
+   },
++  // Quick till-drawer chime: a bright triangle pair with a little sparkle on top.
+   coin() {
+-    tone(880, 0.12, 'triangle', 0.12);
+-    tone(1320, 0.18, 'triangle', 0.1, 0.07);
++    play((a, t) => {
++      voice(a, master, t, 880, 0.14, 'triangle', 0.1);
++      voice(a, master, t + 0.06, NOTE.E6, 0.2, 'triangle', 0.08);
++      voice(a, master, t + 0.07, NOTE.E6 * 2, 0.1, 'sine', 0.025);
++    });
+   },
++  // Soft single bell.
+   ding() {
+-    tone(660, 0.3, 'sine', 0.1);
++    play((a, t) => bellAt(a, master, t, NOTE.E5, 0.7, 0.09));
+   },
++  // Wooden tick for a finished ready item.
+   pop() {
+-    tone(520, 0.09, 'sine', 0.12, 0, 1.8);
++    play((a, t) => voice(a, master, t, 500, 0.1, 'sine', 0.1, 1.9));
++  },
++  // Soft steam hiss for a batch that's ready: filtered noise that swells and fades.
++  steam() {
++    play((a, t) => {
++      const dur = 1.3;
++      const src = noiseSource(a, t, dur);
++      const bp = a.createBiquadFilter();
++      bp.type = 'bandpass';
++      bp.Q.value = 0.8;
++      bp.frequency.setValueAtTime(2200, t);
++      bp.frequency.linearRampToValueAtTime(3600, t + dur);
++      const g = a.createGain();
++      g.gain.setValueAtTime(0.0001, t);
++      g.gain.exponentialRampToValueAtTime(0.04, t + 0.25);
++      g.gain.setValueAtTime(0.04, t + 0.55);
++      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
++      src.connect(bp).connect(g).connect(master);
++    });
++  },
++  // Four rising pentatonic bells that let the last note ring.
++  achievement() {
++    play((a, t) => {
++      [NOTE.C5, NOTE.E5, NOTE.G5, NOTE.C6].forEach((f, i) =>
++        bellAt(a, master, t + i * 0.09, f, i === 3 ? 1.4 : 0.5, 0.08),
++      );
++    });
++  },
++  // Madal roll into a bright rising run, for growing the business.
++  expand() {
++    play((a, t) => {
++      madalAt(a, master, t, 0.1);
++      [NOTE.G4, NOTE.C5, NOTE.D5, NOTE.G5, NOTE.A5].forEach((f, i) =>
++        bellAt(a, master, t + 0.12 + i * 0.11, f, i === 4 ? 1.2 : 0.55, 0.075),
++      );
++    });
+   },
++  startAmbient,
++  stopAmbient,
+ };
+diff --git a/js/sim.js b/js/sim.js
+index 29b3689..4c1ae72 100644
+--- a/js/sim.js
++++ b/js/sim.js
+@@ -2,7 +2,9 @@
+ // game goes through here so the world and UI only react to events.
+ import {
+   ITEMS, ITEM_ORDER, UPGRADES, DECOR, STAFF, STAGES, ACHIEVEMENTS, MAX_SLOTS,
+-  PAYDAY_SECONDS, BASE_SPAWN_SECONDS, BASKET_BASE_COST, NAMES,
++  PAYDAY_SECONDS, BASE_SPAWN_SECONDS, BASKET_BASE_COST, NAMES, START_MONEY,
++  CUSTOMER_KINDS, FESTIVALS, FESTIVAL_EVERY_SECONDS, FESTIVAL_SECONDS, FESTIVAL_SPAWN,
++  FESTIVAL_TOURIST_WEIGHT,
+ } from './data.js';
+ 
+ export const SAVE_KEY = 'momo-tycoon-save-v1';
+@@ -21,7 +23,7 @@ function emptySlot() {
+ export function newGame() {
+   return {
+     v: SAVE_VERSION,
+-    money: 500,
++    money: START_MONEY,
+     totalEarned: 0,
+     served: 0,
+     lost: 0,
+@@ -43,9 +45,14 @@ export function newGame() {
+     waiterAcc: 0,
+     time: 0,
+     achievements: [],
++    // Seconds until the next festival starts, and seconds left in the current one.
++    festival: { next: FESTIVAL_EVERY_SECONDS, left: 0, count: 0, name: null },
+   };
+ }
+ 
++// Saves from before a field existed get its default, and a corrupt field is ignored.
++const num = (v, d) => (Number.isFinite(v) ? v : d);
++
+ // Merge a saved object onto a fresh game so missing fields never break play.
+ function withDefaults(data) {
+   const s = newGame();
+@@ -59,6 +66,13 @@ function withDefaults(data) {
+   s.queue = [];
+   s.spawnIn = 3;
+   s.achievements = Array.isArray(data.achievements) ? data.achievements : [];
++  const f = data.festival && typeof data.festival === 'object' ? data.festival : {};
++  s.festival = {
++    next: clamp(num(f.next, FESTIVAL_EVERY_SECONDS), 0, FESTIVAL_EVERY_SECONDS),
++    left: clamp(num(f.left, 0), 0, FESTIVAL_SECONDS),
++    count: Math.max(0, Math.floor(num(f.count, 0))),
++    name: typeof f.name === 'string' ? f.name : null,
++  };
+   return s;
+ }
+ 
+@@ -231,13 +245,14 @@ export function serve(s, id, ev) {
+   s.stock[c.item] -= c.qty;
+   const patientTip = c.patience / c.maxPatience >= 0.5 ? 0.1 : 0;
+   const lanternTip = s.decor.lanterns ? 0.1 : 0;
+-  const pay = Math.round(priceOf(s, c.item) * c.qty * (1 + patientTip + lanternTip));
++  const kindTip = CUSTOMER_KINDS[c.kind]?.tip || 0;
++  const pay = Math.round(priceOf(s, c.item) * c.qty * (1 + patientTip + lanternTip + kindTip));
+   s.money += pay;
+   s.totalEarned += pay;
+   s.served += c.qty;
+   s.rep = clamp(s.rep + 0.6, 0, 100);
+   s.queue.splice(idx, 1);
+-  ev?.push({ type: 'served', id, pay, item: c.item, qty: c.qty });
++  ev?.push({ type: 'served', id, pay, item: c.item, qty: c.qty, kind: c.kind });
+   return true;
+ }
+ 
+@@ -254,12 +269,26 @@ function weightedItem(s) {
+   return keys[0];
+ }
+ 
++const festivalOn = (s) => s.festival.left > 0;
++
+ function spawnDelay(s) {
+   const st = STAGES[s.stage];
+-  const rate = st.spawn * (1 + (s.rep / 100) * 0.8) * (s.decor.flags ? 1.15 : 1);
++  const rate = st.spawn * (1 + (s.rep / 100) * 0.8) * (s.decor.flags ? 1.15 : 1) * (festivalOn(s) ? FESTIVAL_SPAWN : 1);
+   return (BASE_SPAWN_SECONDS / rate) * (0.7 + Math.random() * 0.6);
+ }
+ 
++function pickKind(s) {
++  const keys = Object.keys(CUSTOMER_KINDS);
++  const w = (k) => CUSTOMER_KINDS[k].weight * (k === 'tourist' && festivalOn(s) ? FESTIVAL_TOURIST_WEIGHT : 1);
++  const total = keys.reduce((a, k) => a + w(k), 0);
++  let r = Math.random() * total;
++  for (const k of keys) {
++    r -= w(k);
++    if (r <= 0) return k;
++  }
++  return keys[0];
++}
++
+ function spawnCustomer(s, ev) {
+   if (s.queue.length >= maxQueue(s)) {
+     // Queue is full: the customer walks past and we lose a little reputation.
+@@ -267,11 +296,13 @@ function spawnCustomer(s, ev) {
+     s.rep = clamp(s.rep - 1, 0, 100);
+     return;
+   }
+-  const maxP = CUSTOMER_PATIENCE * (s.decor.garland ? 1.25 : 1);
++  const kind = pickKind(s);
++  const maxP = CUSTOMER_PATIENCE * (s.decor.garland ? 1.25 : 1) * CUSTOMER_KINDS[kind].patience;
+   const r = Math.random();
+   const c = {
+     id: s.nextId++,
+     name: pick(NAMES),
++    kind,
+     item: weightedItem(s),
+     qty: r < 0.6 ? 1 : r < 0.85 ? 2 : 3,
+     patience: maxP,
+@@ -279,7 +310,28 @@ function spawnCustomer(s, ev) {
+     look: Math.floor(Math.random() * 1000),
+   };
+   s.queue.push(c);
+-  ev.push({ type: 'arrived', id: c.id });
++  ev.push({ type: 'arrived', id: c.id, kind });
++}
++
++// Festivals start on a fixed cadence and run for a short rush. `next` keeps counting
++// through a festival, so the rhythm stays steady.
++function festivalTick(s, dt, ev) {
++  const f = s.festival;
++  if (f.left > 0) {
++    f.left -= dt;
++    if (f.left <= 0) {
++      f.left = 0;
++      ev.push({ type: 'festival', name: f.name, active: false });
++    }
++  }
++  f.next -= dt;
++  if (f.next <= 0) {
++    f.next += FESTIVAL_EVERY_SECONDS;
++    f.count++;
++    f.name = FESTIVALS[(f.count - 1) % FESTIVALS.length].name;
++    f.left = FESTIVAL_SECONDS;
++    ev.push({ type: 'festival', name: f.name, active: true });
++  }
+ }
+ 
+ function autoCook(s, ev) {
+@@ -332,6 +384,7 @@ function checkAchievements(s, ev) {
+ 
+ export function update(s, dt, ev) {
+   s.time += dt;
++  festivalTick(s, dt, ev);
+ 
+   for (let i = 0; i < s.baskets; i++) {
+     const b = s.slots[i];
+diff --git a/js/ui.js b/js/ui.js
+index b5e5665..4315b9c 100644
+--- a/js/ui.js
++++ b/js/ui.js
+@@ -1,7 +1,8 @@
+-// DOM layer: HUD, tabbed management panel, order bubbles, basket badges,
+-// floating text and toasts. Reads game state; sends player intent via act().
++// DOM layer: HUD, tabbed management panel, order bubbles, basket badges, money
++// feedback, the first-run tutorial and toasts. Reads game state; sends player intent via act().
+ import {
+   ITEMS, ITEM_ORDER, UPGRADES, DECOR, STAFF, STAGES, ACHIEVEMENTS, PAYDAY_SECONDS, formatRs,
++  CUSTOMER_KINDS, FESTIVALS,
+ } from './data.js';
+ import {
+   maxBaskets, batchSize, priceOf, upgradeCost, basketCost, canExpand,
+@@ -12,13 +13,52 @@ import { sfx } from './sfx.js';
+ const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+ const hex = (n) => '#' + n.toString(16).padStart(6, '0');
+ 
++// Coach marks shown once to a new player. Each step moves on by itself when its
++// `done` check passes, or on Next. The tour is marked finished on Skip or at the end.
++const TUT_KEY = 'momo-tycoon-tutorial-v1';
++const busyCount = (s) => s.slots.filter((b) => b.state !== 'idle').length;
++const stockCount = (s) => Object.values(s.stock).reduce((a, b) => a + b, 0);
++const snapshot = (s) => ({ busy: busyCount(s), stock: stockCount(s), served: s.served });
++const TUT_STEPS = [
++  {
++    title: 'Load a steamer',
++    text: 'Tap an empty steamer, or its Load badge, to start cooking momos.',
++    target: 'idle',
++    done: (s, t) => busyCount(s) > t.busy,
++  },
++  {
++    title: 'Collect the momos',
++    text: 'A steamer turns green when its momos are ready. Tap it to pull them into your tray.',
++    target: 'ready',
++    done: (s, t) => stockCount(s) > t.stock,
++  },
++  {
++    title: 'Serve a customer',
++    text: 'Tap a customer or their order bubble once your tray holds what they ordered.',
++    target: 'customer',
++    done: (s, t) => s.served > t.served,
++  },
++  {
++    title: 'Grow the stall',
++    text: 'Open the Upgrade tab to cook faster, add steamer baskets or buy decor with your takings.',
++    target: 'tab',
++    done: null,
++  },
++];
++
++const hitBox = (a, b) => a.l < b.r && a.r > b.l && a.t < b.b && a.b > b.t;
++
+ export function createUI({ act }) {
+   const $ = (id) => document.getElementById(id);
+   const el = {
+     stageName: $('stage-name'), stageNe: $('stage-ne'), money: $('money'), rep: $('rep-text'),
+     repBar: $('rep-bar'), paydayText: $('payday-text'), paydayBar: $('payday-bar'), earned: $('earned-text'),
+-    panel: $('panel-body'), tabs: document.querySelectorAll('.tab'), labels: $('labels'),
+-    fx: $('fx'), toasts: $('toasts'), soundBtn: $('btn-sound'),
++    panel: $('panel-body'), panelBox: $('panel'), tabs: document.querySelectorAll('.tab'),
++    hud: $('hud'), moneyWrap: $('money').parentElement, zoom: $('zoom'),
++    labels: $('labels'), fx: $('fx'), toasts: $('toasts'), soundBtn: $('btn-sound'),
++    festival: $('festival'),
++    start: $('start'), coach: $('coach'), coachStep: $('coach-step'), coachTitle: $('coach-title'),
++    coachText: $('coach-text'), coachNext: $('coach-next'), coachSkip: $('coach-skip'), ring: $('coach-ring'),
+   };
+   let tab = 'cook';
+   let lastHtml = '';
+@@ -28,8 +68,26 @@ export function createUI({ act }) {
+   const labelEls = new Map();
+   const badgeEls = [];
+ 
++  // Money feedback: changes are gathered for a moment, then shown as one chip and a pulse.
++  let lastState = null;
++  let lastMoney = 0;
++  let moneyDelta = 0;
++  let moneyDeltaAt = 0;
++
++  let tut = null;
++  let tutSessionDone = false;
++
+   // ---------- panel ----------
+ 
++  // A purchase button. When the player cannot pay yet, it says how much more is needed.
++  function priceBtn(money, cost, attrs, label = 'Buy') {
++    const short = cost - money;
++    if (short > 0) {
++      return `<button class="btn" ${attrs} disabled title="Need ${formatRs(short)} more">${label}<small>Need ${formatRs(short)}</small></button>`;
++    }
++    return `<button class="btn" ${attrs}>${label}<small>${formatRs(cost)}</small></button>`;
++  }
++
+   function itemRow(s, k) {
+     const it = ITEMS[k];
+     const have = s.stock[k] || 0;
+@@ -38,7 +96,7 @@ export function createUI({ act }) {
+     const unlocked = s.unlocked[k];
+     const btn = unlocked
+       ? `<button class="btn ${selected ? 'on' : 'ghost'}" data-act="choose" data-arg="${k}" ${selected ? 'disabled' : ''}>${selected ? 'Cooking' : 'Cook this'}</button>`
+-      : `<button class="btn" data-act="unlock" data-arg="${k}" ${s.money < it.unlock ? 'disabled' : ''}>Unlock<small>${formatRs(it.unlock)}</small></button>`;
++      : priceBtn(s.money, it.unlock, `data-act="unlock" data-arg="${k}"`, 'Unlock');
+     return `
+       <div class="menu-card ${selected && unlocked ? 'selected' : ''}">
+         <span class="swatch" style="background:${hex(it.color)}"></span>
+@@ -82,7 +140,7 @@ export function createUI({ act }) {
+       <div class="basket-list">${baskets}</div>
+       <div class="section-title">Menu <span class="muted">${orders} waiting in line</span></div>
+       <div class="menu-grid">${menu}</div>
+-      <p class="muted" style="margin:12px 2px 0;line-height:1.4">Tap a steamer on the stall to load it with the item marked “Cooking”, and tap again when it's ready. Hired chefs do this automatically.</p>`;
++      <p class="muted panel-note">Tap a steamer on the stall to load it with the item marked “Cooking”, and tap again when it's ready. Hired chefs do this automatically.</p>`;
+   }
+ 
+   function pips(n, max) {
+@@ -99,7 +157,7 @@ export function createUI({ act }) {
+       html += `
+         <div class="row">
+           <div><div class="name">${esc(d.name)}</div><div class="desc">${esc(d.desc)}</div>${pips(lvl, d.max)}</div>
+-          <button class="btn" data-act="upgrade" data-arg="${key}" ${maxed || s.money < cost ? 'disabled' : ''}>${maxed ? 'Max' : `Buy<small>${formatRs(cost)}</small>`}</button>
++          ${maxed ? `<button class="btn" disabled>Max<small>Fully upgraded</small></button>` : priceBtn(s.money, cost, `data-act="upgrade" data-arg="${key}"`)}
+         </div>`;
+     }
+     const bMax = s.baskets >= maxBaskets(s);
+@@ -107,7 +165,7 @@ export function createUI({ act }) {
+     html += `
+       <div class="row">
+         <div><div class="name">Extra steamer basket</div><div class="desc">${s.baskets} of ${maxBaskets(s)} baskets in use. Each basket cooks in parallel.</div></div>
+-        <button class="btn" data-act="basket" ${bMax || s.money < bCost ? 'disabled' : ''}>${bMax ? 'Full' : `Add<small>${formatRs(bCost)}</small>`}</button>
++        ${bMax ? `<button class="btn" disabled>Full<small>Stage limit</small></button>` : priceBtn(s.money, bCost, 'data-act="basket"', 'Add')}
+       </div>`;
+     html += `<div class="section-title">Decor <span class="muted">one-time</span></div>`;
+     for (const key of Object.keys(DECOR)) {
+@@ -116,7 +174,7 @@ export function createUI({ act }) {
+       html += `
+         <div class="row">
+           <div><div class="name">${esc(d.name)}</div><div class="desc">${esc(d.desc)}</div></div>
+-          <button class="btn ${owned ? 'on' : ''}" data-act="decor" data-arg="${key}" ${owned || s.money < d.cost ? 'disabled' : ''}>${owned ? 'Installed' : `Buy<small>${formatRs(d.cost)}</small>`}</button>
++          ${owned ? `<button class="btn on" disabled>Installed</button>` : priceBtn(s.money, d.cost, `data-act="decor" data-arg="${key}"`)}
+         </div>`;
+     }
+     return html;
+@@ -135,7 +193,7 @@ export function createUI({ act }) {
+             <div class="desc">${esc(d.desc)}</div>
+             <div class="desc"><b style="color:var(--cream)">${n}/${d.max} hired</b> · wage ${formatRs(d.wage)} per payday</div>
+           </div>
+-          <button class="btn" data-act="hire" data-arg="${key}" ${full || s.money < d.hire ? 'disabled' : ''}>${full ? 'Full' : `Hire<small>${formatRs(d.hire)}</small>`}</button>
++          ${full ? `<button class="btn" disabled>Full<small>Team complete</small></button>` : priceBtn(s.money, d.hire, `data-act="hire" data-arg="${key}"`, 'Hire')}
+         </div>`;
+     }
+     const rent = STAGES[s.stage].rent;
+@@ -145,29 +203,37 @@ export function createUI({ act }) {
+         <div class="stat"><span>Wages</span><b>${formatRs(wages(s))}</b></div>
+         <div class="stat"><span>Rent</span><b>${formatRs(rent)}</b></div>
+       </div>
+-      <p class="muted" style="line-height:1.4;margin:8px 2px 0">Chefs keep steamers full and pull momos out of them. Servers bring the first ready order to a customer. Wages are paid even when the line is empty.</p>`;
++      <p class="muted panel-note">Chefs keep steamers full and pull momos out of them. Servers bring the first ready order to a customer. Wages are paid even when the line is empty.</p>`;
+     return html;
+   }
+ 
++  // Why the next stage is out of reach, in the words of the button.
++  function expandReason(s, next) {
++    const short = next.cost - s.money;
++    if (short > 0) return `Need ${formatRs(short)} more`;
++    return `Need reputation ${next.rep}+`;
++  }
++
+   function renderExpand(s) {
+     const cur = STAGES[s.stage];
+     const next = nextStage(s);
+     let html = `
+       <div class="stage-card current">
+-        <div class="section-title" style="margin:0 0 4px"><span class="name" style="font-size:15px;color:var(--cream);text-transform:none;letter-spacing:0;font-weight:700">${esc(cur.name)}</span><span class="muted">current</span></div>
+-        <div class="muted"><span class="ne" style="font-family:'Noto Sans Devanagari',system-ui,sans-serif;color:#f3c98e">${esc(cur.ne)}</span> · up to ${cur.maxBaskets} steamers · queue of ${cur.maxQueue}</div>
++        <div class="stage-head"><span class="stage-title">${esc(cur.name)}</span><span class="muted">current</span></div>
++        <div class="muted"><span class="ne">${esc(cur.ne)}</span> · up to ${cur.maxBaskets} steamers · queue of ${cur.maxQueue}</div>
+       </div>`;
+     if (next) {
+       const ok = canExpand(s);
++      const reason = ok ? '' : expandReason(s, next);
+       html += `
+         <div class="stage-card">
+-          <div class="section-title" style="margin:0 0 4px"><span class="name" style="font-size:15px;color:var(--cream);text-transform:none;letter-spacing:0;font-weight:700">${esc(next.name)}</span><span class="muted">next</span></div>
+-          <div class="muted"><span class="ne" style="font-family:'Noto Sans Devanagari',system-ui,sans-serif;color:#f3c98e">${esc(next.ne)}</span></div>
++          <div class="stage-head"><span class="stage-title">${esc(next.name)}</span><span class="muted">next</span></div>
++          <div class="muted"><span class="ne">${esc(next.ne)}</span></div>
+           <div class="req">Needs <b>${formatRs(next.cost)}</b> and reputation <b>${next.rep}+</b> (you have ${Math.floor(s.rep)}).<br>Up to ${next.maxBaskets} steamers, queue of ${next.maxQueue}, spawn x${next.spawn}, rent ${formatRs(next.rent)} per payday.</div>
+-          <button class="btn" style="width:100%" data-act="expand" ${ok ? '' : 'disabled'}>${ok ? `Open ${esc(next.name)}` : 'Not yet'}</button>
++          <button class="btn wide" data-act="expand" ${ok ? '' : `disabled title="${esc(reason)}"`}>${ok ? `Open ${esc(next.name)}` : esc(reason)}</button>
+         </div>`;
+     } else {
+-      html += `<p class="muted" style="margin:6px 2px 12px">You run the biggest momo restaurant in Kathmandu.</p>`;
++      html += `<p class="muted panel-note">You run the biggest momo restaurant in Kathmandu.</p>`;
+     }
+     html += `
+       <div class="section-title">Business</div>
+@@ -193,8 +259,17 @@ export function createUI({ act }) {
+     const html = tab === 'cook' ? renderCook(s) : tab === 'upgrade' ? renderUpgrade(s) : tab === 'staff' ? renderStaff(s) : renderExpand(s);
+     if (html !== lastHtml) {
+       const top = el.panel.scrollTop;
++      // Rebuilding the panel drops keyboard focus, so put it back on the same control.
++      const focused = document.activeElement;
++      const key = focused && el.panel.contains(focused) && focused.dataset.act
++        ? [focused.dataset.act, focused.dataset.arg ?? ''] : null;
+       el.panel.innerHTML = html;
+       el.panel.scrollTop = top;
++      if (key) {
++        const again = [...el.panel.querySelectorAll('[data-act]')]
++          .find((b) => b.dataset.act === key[0] && (b.dataset.arg ?? '') === key[1]);
++        if (again && !again.disabled) again.focus({ preventScroll: true });
++      }
+       lastHtml = html;
+     }
+   }
+@@ -228,35 +303,102 @@ export function createUI({ act }) {
+     el.paydayText.textContent = `Payday in ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`;
+     el.paydayBar.style.width = `${(1 - s.payIn / PAYDAY_SECONDS) * 100}%`;
+     el.earned.textContent = `Earned ${formatRs(s.totalEarned)}`;
++    renderFestival(s);
++    moneyFeedback(s);
++  }
++
++  // Festival rush chip in the top bar: name, Nepali name and time left in the rush.
++  function renderFestival(s) {
++    const rushing = s.festival.left > 0;
++    const fest = FESTIVALS.find((f) => f.name === s.festival.name) || FESTIVALS[0];
++    el.festival.hidden = !rushing;
++    if (!rushing) return;
++    const left = Math.ceil(s.festival.left);
++    const text = `${fest.name} rush · ${left}s left`;
++    if (el.festival.dataset.text !== text) {
++      el.festival.dataset.text = text;
++      el.festival.innerHTML = `${esc(fest.name)} rush · <span class="ne">${esc(fest.ne)}</span> · ${left}s left`;
++      el.festival.title = fest.desc;
++    }
++  }
++
++  function showMoneyChange(d) {
++    const up = d > 0;
++    el.money.classList.remove('pulse-up', 'pulse-down');
++    void el.money.offsetWidth; // restart the pulse if it is already running
++    el.money.classList.add(up ? 'pulse-up' : 'pulse-down');
++    const chip = document.createElement('span');
++    chip.className = `money-chip ${up ? 'up' : 'down'}`;
++    chip.textContent = `${up ? '+' : '−'}${formatRs(Math.abs(d))}`;
++    el.moneyWrap.appendChild(chip);
++    setTimeout(() => chip.remove(), 1500);
++  }
++
++  function moneyFeedback(s) {
++    const now = performance.now();
++    // A new or loaded game replaces the whole state: that is not income or spending.
++    if (s !== lastState) {
++      lastState = s;
++      lastMoney = s.money;
++      moneyDelta = 0;
++      return;
++    }
++    const diff = s.money - lastMoney;
++    lastMoney = s.money;
++    if (diff !== 0) {
++      moneyDelta += diff;
++      moneyDeltaAt = now;
++    }
++    if (moneyDelta !== 0 && now - moneyDeltaAt > 450) {
++      showMoneyChange(moneyDelta);
++      moneyDelta = 0;
++    }
+   }
+ 
+   // ---------- customer order bubbles ----------
+ 
++  // Tourists and students say so on their label, as well as wearing their own look.
+   function labelFor(s, c, canServe) {
+     const it = ITEMS[c.item];
++    const kind = c.kind !== 'local' && CUSTOMER_KINDS[c.kind] ? ` · ${CUSTOMER_KINDS[c.kind].name}` : '';
+     return `
+-      <div class="cl-name">${esc(c.name)}</div>
++      <div class="cl-name">${esc(c.name)}${esc(kind)}</div>
+       <div class="cl-order"><span class="dot" style="background:${hex(it.color)}"></span>${c.qty} × ${esc(it.name)}</div>
+       <div class="cl-bar"><span></span></div>`;
+   }
+ 
++  // Screen boxes the order bubbles must stay clear of: the order zoom buttons and the panel.
++  function chromeBoxes() {
++    const out = [];
++    for (const node of [el.zoom, el.panelBox]) {
++      const r = node.getBoundingClientRect();
++      if (r.width && r.height) out.push({ l: r.left, t: r.top, r: r.right, b: r.bottom });
++    }
++    return out;
++  }
++
+   // Queued orders can land on top of each other from above, so each label is lifted
+-  // above any label it would cover. Labels stay where the customers are, stacked if needed.
++  // above any label or control it would cover. Labels stay where the customers are, stacked
++  // if needed. They are kept fully on screen, so none is clipped at the left or right edge.
+   function placeLabels(shown) {
+     shown.sort((a, b) => a.y - b.y);
++    const chrome = chromeBoxes();
++    const vw = window.innerWidth;
+     const placed = [];
+     for (const it of shown) {
+       const w = it.node.offsetWidth, h = it.node.offsetHeight;
++      const x = Math.min(Math.max(it.x, 8 + w / 2), vw - 8 - w / 2);
+       let bottom = it.y;
+       let top = bottom - h;
+       for (let guard = 0; guard < 12; guard++) {
+-        const hit = placed.find((r) => Math.abs(r.x - it.x) < (r.w + w) / 2 - 2 && top < r.bottom && bottom > r.top);
++        const box = { l: x - w / 2, r: x + w / 2, t: top, b: bottom };
++        const hit = placed.find((r) => hitBox(box, r)) || chrome.find((r) => hitBox(box, r));
+         if (!hit) break;
+-        bottom = hit.top - 4;
++        bottom = hit.t - 4;
+         top = bottom - h;
+       }
+-      placed.push({ x: it.x, w, top, bottom });
+-      it.node.style.transform = `translate(${it.x}px, ${bottom}px) translate(-50%, -100%)`;
++      placed.push({ l: x - w / 2, r: x + w / 2, t: top, b: bottom });
++      it.node.style.transform = `translate(${x}px, ${bottom}px) translate(-50%, -100%)`;
+     }
+   }
+ 
+@@ -269,13 +411,14 @@ export function createUI({ act }) {
+       if (!node) {
+         node = document.createElement('button');
+         node.className = 'cust-label';
++        node.setAttribute('aria-label', `${c.name} wants ${c.qty} ${ITEMS[c.item].name}. Serve`);
+         node.addEventListener('click', () => act('serve', String(c.id)));
+         el.labels.appendChild(node);
+         labelEls.set(c.id, node);
+         node._key = '';
+       }
+       const canServe = (s.stock[c.item] || 0) >= c.qty;
+-      const key = `${c.item}|${c.qty}|${c.name}|${canServe}`;
++      const key = `${c.item}|${c.qty}|${c.name}|${c.kind}|${canServe}`;
+       if (node._key !== key) {
+         node.innerHTML = labelFor(s, c, canServe);
+         node.classList.toggle('can', canServe);
+@@ -303,10 +446,15 @@ export function createUI({ act }) {
+     }
+   }
+ 
++  const boxAbove = (p, w, h) => ({ l: p.x - w / 2, r: p.x + w / 2, t: p.y - h, b: p.y });
++  const boxBelow = (p, w, h) => ({ l: p.x - w / 2, r: p.x + w / 2, t: p.y, b: p.y + h });
++
+   function renderBadges(s, world) {
+     const count = s.baskets;
+     const pts = [];
+     for (let i = 0; i < count; i++) pts.push(world.slotScreen(i));
++    // Scenery such as the shop sign can report its screen box, so badges step aside from it.
++    const scenery = typeof world.occluders === 'function' ? world.occluders() : [];
+     // Shorter badge text when neighbouring steamers would crowd each other on
+     // screen, and on narrow screens (bottom-sheet phones, small landscape).
+     let tight = false;
+@@ -325,7 +473,6 @@ export function createUI({ act }) {
+       if (!badgeEls[i]) {
+         const b = document.createElement('button');
+         b.className = 'basket-badge';
+-        b.setAttribute('aria-label', `Steamer ${i + 1}`);
+         b.addEventListener('click', () => act('tap', String(i)));
+         el.labels.appendChild(b);
+         badgeEls[i] = b;
+@@ -337,18 +484,21 @@ export function createUI({ act }) {
+         node.style.display = 'none';
+         continue;
+       }
+-      let text, cls;
++      let text, cls, label;
+       // Compact badges keep only the count: the green colour already says "ready".
+       // Where steamers are packed tighter still, the empty badge shrinks to "+".
+       if (st.state === 'ready') {
+         text = compact ? `×${st.count}` : `Ready ×${st.count} · collect`;
+         cls = 'ready';
++        label = `Steamer ${i + 1}: ready, collect ${st.count} ${ITEMS[st.item].name}`;
+       } else if (st.state === 'cooking') {
+         text = `${Math.ceil(st.left)}s`;
+         cls = '';
++        label = `Steamer ${i + 1}: cooking, ${Math.ceil(st.left)} seconds left`;
+       } else {
+         text = dense ? '+' : compact ? 'Load' : 'Tap to load';
+         cls = 'empty';
++        label = `Steamer ${i + 1}: empty, load ${ITEMS[s.cookChoice].name}`;
+       }
+       const key = `${text}|${cls}`;
+       if (node._key !== key) {
+@@ -356,9 +506,14 @@ export function createUI({ act }) {
+         node.className = `basket-badge ${cls}`;
+         node._key = key;
+       }
++      if (node.getAttribute('aria-label') !== label) node.setAttribute('aria-label', label);
+       node.style.display = '';
+       // Front-row badges hang below their anchor, back-row ones sit above it (see world.slotScreen).
+-      node.style.transform = `translate(${p.x}px, ${p.y}px) translate(-50%, ${p.below ? '0' : '-100%'})`;
++      let above = !p.below;
++      const w = node.offsetWidth, h = node.offsetHeight;
++      const hits = (box) => scenery.some((o) => hitBox(box, o));
++      if (hits(above ? boxAbove(p, w, h) : boxBelow(p, w, h)) && !hits(above ? boxBelow(p, w, h) : boxAbove(p, w, h))) above = !above;
++      node.style.transform = `translate(${p.x}px, ${p.y}px) translate(-50%, ${above ? '-100%' : '0'})`;
+     }
+     for (let i = count; i < badgeEls.length; i++) badgeEls[i].style.display = 'none';
+   }
+@@ -372,6 +527,107 @@ export function createUI({ act }) {
+     });
+   }
+ 
++  // ---------- first-run tutorial ----------
++
++  function tutorialDone() {
++    if (tutSessionDone) return true;
++    try {
++      return localStorage.getItem(TUT_KEY) === 'done';
++    } catch {
++      return false;
++    }
++  }
++
++  function tutorialGoTo(i, s) {
++    tut = { step: i, shown: -1, ...snapshot(s) };
++  }
++
++  function tutorialFinish() {
++    tut = null;
++    tutSessionDone = true;
++    try {
++      localStorage.setItem(TUT_KEY, 'done');
++    } catch {
++      // Storage is blocked (private mode): the tour still ends for this session.
++    }
++    el.coach.hidden = true;
++    el.ring.hidden = true;
++  }
++
++  // Where the ring should point for a step, in screen pixels, or null.
++  function tutorialTarget(kind, s, world) {
++    if (kind === 'tab') {
++      const btn = [...el.tabs].find((b) => b.dataset.tab === 'upgrade');
++      const r = btn?.getBoundingClientRect();
++      return r && r.width ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : null;
++    }
++    if (kind === 'customer') {
++      const c = s.queue[0];
++      const p = c && world.customerScreen(c.id);
++      return p && p.visible ? { x: p.x, y: p.y } : null;
++    }
++    const want = kind === 'ready' ? 'ready' : 'idle';
++    const i = s.slots.findIndex((b, k) => k < s.baskets && b.state === want);
++    const p = i >= 0 ? world.slotScreen(i) : null;
++    return p && p.visible ? { x: p.x, y: p.y } : null;
++  }
++
++  function tutorialShow(s, world) {
++    const step = TUT_STEPS[tut.step];
++    if (tut.shown !== tut.step) {
++      tut.shown = tut.step;
++      el.coachStep.textContent = `Tip ${tut.step + 1} of ${TUT_STEPS.length}`;
++      el.coachTitle.textContent = step.title;
++      el.coachText.textContent = step.text;
++      el.coachNext.textContent = tut.step === TUT_STEPS.length - 1 ? 'Got it' : 'Next';
++      el.coach.hidden = false;
++      if (tut.focus) {
++        tut.focus = false;
++        el.coachNext.focus({ preventScroll: true });
++      }
++    }
++    const at = tutorialTarget(step.target, s, world);
++    el.ring.hidden = !at;
++    if (at) el.ring.style.transform = `translate(${at.x - 28}px, ${at.y - 28}px)`;
++  }
++
++  function tutorialFrame(s, world) {
++    // The tour runs only while the stall is on screen, so it waits behind the title and menu.
++    const playing = el.start.classList.contains('hidden');
++    if (!playing) {
++      if (tut) tut.shown = -1;
++      el.coach.hidden = true;
++      el.ring.hidden = true;
++      return;
++    }
++    if (!tut) {
++      if (tutorialDone()) return;
++      tutorialGoTo(0, s);
++      tut.focus = true;
++    }
++    const step = TUT_STEPS[tut.step];
++    if (step.done && step.done(s, tut)) {
++      if (tut.step + 1 >= TUT_STEPS.length) {
++        tutorialFinish();
++        return;
++      }
++      tutorialGoTo(tut.step + 1, s);
++    }
++    tutorialShow(s, world);
++  }
++
++  el.coachNext.addEventListener('click', () => {
++    if (!tut) return;
++    if (tut.step + 1 >= TUT_STEPS.length) tutorialFinish();
++    else tutorialGoTo(tut.step + 1, lastState);
++  });
++  el.coachSkip.addEventListener('click', () => {
++    if (tut) tutorialFinish();
++  });
++  document.addEventListener('keydown', (e) => {
++    if (e.key === 'Escape' && tut) tutorialFinish();
++  });
++
+   // ---------- toasts & floating text ----------
+ 
+   function toast(title, body, kind = 'good') {
+@@ -411,12 +667,18 @@ export function createUI({ act }) {
+       }
+       case 'achievement':
+         toast(`Achievement: ${ev.name}`, `${ev.desc} Bonus ${formatRs(ev.reward)}`, 'good');
+-        sfx.ding();
++        sfx.achievement();
+         break;
+       case 'expanded': {
+         const st = STAGES[ev.stage];
+         toast('Business grew!', `Welcome to your ${st.name} (${st.ne}).`, 'good');
+-        sfx.ding();
++        sfx.expand();
++        break;
++      }
++      case 'festival': {
++        if (!ev.active) break;
++        const fest = FESTIVALS.find((f) => f.name === ev.name) || FESTIVALS[0];
++        toast(`${fest.name} rush has begun`, `${fest.desc} More customers, more tourists.`, 'info');
+         break;
+       }
+       case 'left': {
+@@ -427,14 +689,18 @@ export function createUI({ act }) {
+         }
+         break;
+       }
++      // A batch that just finished steams; a steamer emptied by the player gives a wooden tick.
+       case 'ready': {
+         const now = performance.now();
+         if (now - lastReady > 400) {
+           lastReady = now;
+-          sfx.pop();
++          sfx.steam();
+         }
+         break;
+       }
++      case 'collected':
++        sfx.pop();
++        break;
+       default:
+         break;
+     }
+@@ -448,6 +714,7 @@ export function createUI({ act }) {
+     updateProgress(s);
+     renderLabels(s, world);
+     renderBadges(s, world);
++    tutorialFrame(s, world);
+   }
+ 
+   function setSoundLabel() {
+diff --git a/js/world.js b/js/world.js
+index 99b51e6..f22a5b1 100644
+--- a/js/world.js
++++ b/js/world.js
+@@ -48,34 +48,67 @@ function canvasTex(w, h, draw, repeat) {
+ 
+ function brickTexture() {
+   return canvasTex(256, 256, (g, w, h) => {
+-    g.fillStyle = '#d8c6a0';
++    // Lime-white mortar, so each terracotta brick stands out from above.
++    g.fillStyle = '#f0dcb0';
+     g.fillRect(0, 0, w, h);
+     const rows = 8, cols = 4, bh = h / rows, bw = w / cols;
+     for (let r = 0; r < rows; r++) {
+       const off = r % 2 ? bw / 2 : 0;
+       for (let c = -1; c <= cols; c++) {
+-        const k = 0.82 + Math.random() * 0.26;
+-        g.fillStyle = `rgb(${(164 * k) | 0},${(78 * k) | 0},${(48 * k) | 0})`;
++        const k = 0.86 + Math.random() * 0.22;
++        g.fillStyle = `rgb(${Math.min(255, (206 * k) | 0)},${(92 * k) | 0},${(52 * k) | 0})`;
+         g.fillRect(c * bw + off + 3, r * bh + 3, bw - 6, bh - 6);
+       }
+     }
+   }, [2, 2]);
+ }
+ 
++// Warm sandstone slabs with pale joints, like a Kathmandu courtyard.
+ function pavingTexture() {
+   return canvasTex(256, 256, (g, w, h) => {
+-    g.fillStyle = '#7f6c5a';
++    g.fillStyle = '#e2c79b';
+     g.fillRect(0, 0, w, h);
+     for (let i = 0; i < 4; i++) {
+       for (let j = 0; j < 4; j++) {
+-        const k = 0.78 + Math.random() * 0.36;
+-        g.fillStyle = `rgb(${(146 * k) | 0},${(128 * k) | 0},${(106 * k) | 0})`;
++        const k = 0.9 + Math.random() * 0.18;
++        g.fillStyle = `rgb(${(226 * k) | 0},${(190 * k) | 0},${(138 * k) | 0})`;
+         g.fillRect(i * 64 + 3, j * 64 + 3, 58, 58);
+       }
+     }
+   }, [90, 90]);
+ }
+ 
++// Cobbled street: warm grey stones with darker mottling.
++function roadTexture() {
++  return canvasTex(256, 256, (g, w, h) => {
++    g.fillStyle = '#8a7158';
++    g.fillRect(0, 0, w, h);
++    for (let i = 0; i < 46; i++) {
++      const k = 0.85 + Math.random() * 0.3;
++      g.fillStyle = `rgb(${(214 * k) | 0},${(186 * k) | 0},${(150 * k) | 0})`;
++      g.beginPath();
++      g.ellipse(Math.random() * w, Math.random() * h, 8 + Math.random() * 6, 6 + Math.random() * 4, Math.random() * 3, 0, TAU);
++      g.fill();
++    }
++  });
++}
++
++// Queue mat: saffron tiles with a marigold border, so the waiting line reads as its own zone.
++function queueTexture() {
++  return canvasTex(256, 256, (g, w, h) => {
++    g.fillStyle = '#d4812a';
++    g.fillRect(0, 0, w, h);
++    g.fillStyle = '#f0b43c';
++    g.fillRect(14, 14, w - 28, h - 28);
++    for (let i = 0; i < 4; i++) {
++      for (let j = 0; j < 4; j++) {
++        g.fillStyle = (i + j) % 2 ? '#ffc95a' : '#f3a93a';
++        g.fillRect(i * 64 + 22, j * 64 + 22, 44, 44);
++      }
++    }
++  }, [1, 1]);
++}
++
+ // Carved Newari window: dark wood frame, painted band, lattice panel.
+ function windowTexture() {
+   return canvasTex(256, 256, (g, w, h) => {
+@@ -176,13 +209,36 @@ function buddhaEyesTexture() {
+   });
+ }
+ 
++// Dhaka topi: black cloth with a white and red woven diamond band, the national cap.
++function dhakaTexture() {
++  return canvasTex(256, 128, (g, w, h) => {
++    g.fillStyle = '#1a1512';
++    g.fillRect(0, 0, w, h);
++    for (let x = 0; x < w; x += 32) {
++      for (let y = 0; y < h; y += 32) {
++        const ox = (y / 32) % 2 ? 16 : 0;
++        g.fillStyle = '#f5f1e6';
++        g.beginPath();
++        g.moveTo(x + ox + 16, y + 6);
++        g.lineTo(x + ox + 26, y + 16);
++        g.lineTo(x + ox + 16, y + 26);
++        g.lineTo(x + ox + 6, y + 16);
++        g.closePath();
++        g.fill();
++        g.fillStyle = '#c8322a';
++        g.fillRect(x + ox + 14, y + 14, 4, 4);
++      }
++    }
++  }, [1, 1]);
++}
++
+ function roofTileTexture() {
+   return canvasTex(128, 128, (g, w, h) => {
+-    g.fillStyle = '#4a3328';
++    g.fillStyle = '#7a2e1f';
+     g.fillRect(0, 0, w, h);
+     for (let y = 0; y < h; y += 16) {
+       for (let x = (y / 16) % 2 ? 0 : -16; x < w; x += 32) {
+-        g.fillStyle = '#5e4236';
++        g.fillStyle = '#b5543a';
+         g.beginPath();
+         g.arc(x + 16, y + 16, 15, 0, Math.PI);
+         g.fill();
+@@ -204,12 +260,12 @@ function glowTexture(r, gg, b) {
+ 
+ function kitchenTexture() {
+   return canvasTex(256, 256, (g, w, h) => {
+-    g.fillStyle = '#6d6259';
++    g.fillStyle = '#9c8a72';
+     g.fillRect(0, 0, w, h);
+     for (let i = 0; i < 4; i++) {
+       for (let j = 0; j < 4; j++) {
+-        const k = 0.92 + Math.random() * 0.1;
+-        g.fillStyle = `rgb(${(232 * k) | 0},${(222 * k) | 0},${(200 * k) | 0})`;
++        const k = 0.94 + Math.random() * 0.08;
++        g.fillStyle = `rgb(${(246 * k) | 0},${(236 * k) | 0},${(214 * k) | 0})`;
+         g.fillRect(i * 64 + 4, j * 64 + 4, 56, 56);
+       }
+     }
+@@ -219,8 +275,8 @@ function kitchenTexture() {
+ function woodFloorTexture() {
+   return canvasTex(256, 256, (g, w, h) => {
+     for (let r = 0; r < 8; r++) {
+-      const k = 0.85 + Math.random() * 0.25;
+-      g.fillStyle = `rgb(${(139 * k) | 0},${(90 * k) | 0},${(52 * k) | 0})`;
++      const k = 0.9 + Math.random() * 0.2;
++      g.fillStyle = `rgb(${(196 * k) | 0},${(124 * k) | 0},${(66 * k) | 0})`;
+       g.fillRect(0, r * 32, w, 32);
+       g.fillStyle = 'rgba(40,20,8,0.45)';
+       g.fillRect(0, r * 32, w, 2);
+@@ -228,20 +284,6 @@ function woodFloorTexture() {
+   });
+ }
+ 
+-function roadTexture() {
+-  return canvasTex(256, 256, (g, w, h) => {
+-    g.fillStyle = '#5b5148';
+-    g.fillRect(0, 0, w, h);
+-    for (let i = 0; i < 30; i++) {
+-      const k = 0.7 + Math.random() * 0.5;
+-      g.fillStyle = `rgb(${(120 * k) | 0},${(104 * k) | 0},${(90 * k) | 0})`;
+-      g.beginPath();
+-      g.ellipse(Math.random() * w, Math.random() * h, 7 + Math.random() * 6, 5 + Math.random() * 4, Math.random() * 3, 0, TAU);
+-      g.fill();
+-    }
+-  });
+-}
+-
+ // Soft contact shadow under people so they read clearly from overhead.
+ function blobTexture() {
+   return canvasTex(128, 128, (g) => {
+@@ -413,6 +455,29 @@ function shrubPot(parent, x, z, m) {
+   parent.add(g);
+ }
+ 
++// A dog asleep on the cobbles: tan body curled round, head on the paws, seen from above.
++function addSleepingDog(parent, x, z, m) {
++  const g = new THREE.Group();
++  g.position.set(x, 0, z);
++  g.rotation.y = 0.5;
++  mesh(new THREE.SphereGeometry(0.36, 12, 8), m.dog, 0, 0.14, 0, g).scale.set(1.5, 0.45, 1);
++  mesh(new THREE.SphereGeometry(0.2, 10, 8), m.dog, 0.45, 0.13, 0.12, g).scale.set(1, 0.6, 1);
++  mesh(new THREE.SphereGeometry(0.07, 8, 6), m.hair, 0.62, 0.12, 0.2, g, false);
++  mesh(new THREE.CylinderGeometry(0.05, 0.08, 0.5, 6), m.dog, -0.55, 0.1, -0.2, g, false).rotation.z = Math.PI / 2.4;
++  parent.add(g);
++}
++
++// Pigeon pecking at the stones: grey body, round head, a faint wing bar.
++function addPigeon(parent, x, z, m) {
++  const g = new THREE.Group();
++  g.position.set(x, 0, z);
++  g.rotation.y = rnd(0, TAU);
++  mesh(new THREE.SphereGeometry(0.11, 10, 8), m.pigeon, 0, 0.1, 0, g).scale.set(1, 0.7, 1.5);
++  mesh(new THREE.SphereGeometry(0.06, 8, 6), m.pigeon, 0, 0.14, 0.13, g, false);
++  mesh(new THREE.BoxGeometry(0.12, 0.012, 0.16), m.whiteCap, 0, 0.19, -0.02, g, false);
++  parent.add(g);
++}
++
+ // Round table with a red cloth and four stools, a restaurant floor-plan staple.
+ function diningTable(parent, x, z, m) {
+   const g = new THREE.Group();
+@@ -445,7 +510,7 @@ function disposeGroup(group) {
+ // ---------- humans ----------
+ const HUMAN_SCALE = 1.18;
+ 
+-function makeHuman({ shirt, pants, skin, topi, apron, white }, mats) {
++function makeHuman({ shirt, pants, skin, topi, apron, white, pack }, mats) {
+   const root = new THREE.Group();
+   root.scale.setScalar(HUMAN_SCALE);
+   const shirtM = new THREE.MeshStandardMaterial({ color: shirt, roughness: 0.8 });
+@@ -462,20 +527,24 @@ function makeHuman({ shirt, pants, skin, topi, apron, white }, mats) {
+   const torso = new THREE.Group();
+   torso.position.y = 0.85;
+   // Wider across the shoulders than front to back, so the shoulders show from above.
+-  mesh(new THREE.CylinderGeometry(0.27, 0.3, 0.9, 12), shirtM, 0, 0.45, 0, torso).scale.set(1.3, 1, 0.9);
+-  if (apron) mesh(new THREE.BoxGeometry(0.46, 0.7, 0.05), apron, 0, 0.45, 0.28, torso);
++  // Broad shoulders and a bigger head, so people read clearly from above.
++  mesh(new THREE.CylinderGeometry(0.3, 0.33, 0.9, 12), shirtM, 0, 0.45, 0, torso).scale.set(1.4, 1, 1);
++  if (apron) mesh(new THREE.BoxGeometry(0.5, 0.7, 0.05), apron, 0, 0.45, 0.3, torso);
++  // A backpack on the far side, in a colour of its own, so tourists and students read apart from locals.
++  // Local +z is the front (the way they face the counter), so the pack sits at -z.
++  if (pack) mesh(new THREE.BoxGeometry(0.46, 0.52, 0.22), new THREE.MeshStandardMaterial({ color: pack, roughness: 0.85 }), 0, 0.5, -0.3, torso);
+   root.add(torso);
+   h.torso = torso;
+   const head = new THREE.Group();
+-  head.position.set(0, 1.95, 0);
+-  mesh(new THREE.SphereGeometry(0.19, 14, 10), skinM, 0, 0, 0, head);
+-  mesh(new THREE.SphereGeometry(0.205, 12, 8, 0, TAU, 0, Math.PI * 0.5), mats.hair, 0, 0.02, -0.02, head, false);
++  head.position.set(0, 1.98, 0);
++  mesh(new THREE.SphereGeometry(0.24, 16, 12), skinM, 0, 0, 0, head);
++  mesh(new THREE.SphereGeometry(0.255, 14, 9, 0, TAU, 0, Math.PI * 0.5), mats.hair, 0, 0.02, -0.02, head, false);
+   if (topi) {
+     const tm = white ? mats.whiteCap : mats.topi;
+-    mesh(new THREE.CylinderGeometry(0.2, 0.21, 0.14, 14), tm, 0, 0.15, 0, head);
+-    mesh(new THREE.CylinderGeometry(0.19, 0.19, 0.02, 14), tm, 0, 0.23, 0, head, false);
++    mesh(new THREE.CylinderGeometry(0.25, 0.26, 0.16, 16), tm, 0, 0.17, 0, head);
++    mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.02, 16), tm, 0, 0.26, 0, head, false);
+     // Brim: a wider disc, so the hat outlines the head from above.
+-    mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.025, 16), tm, 0, 0.09, 0, head, false);
++    mesh(new THREE.CylinderGeometry(0.31, 0.31, 0.03, 18), tm, 0, 0.1, 0, head, false);
+   }
+   root.add(head);
+   h.head = head;
+@@ -511,20 +580,21 @@ export function createWorld(canvas) {
+   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+   renderer.shadowMap.enabled = true;
+   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
++  // ACES desaturates warm colours toward brown, so exposure is raised to keep the palette vivid.
+   renderer.toneMapping = THREE.ACESFilmicToneMapping;
+-  renderer.toneMappingExposure = 1.05;
++  renderer.toneMappingExposure = 1.22;
+   renderer.outputColorSpace = THREE.SRGBColorSpace;
+ 
+   const scene = new THREE.Scene();
+-  scene.background = new THREE.Color(0x2a1a12);
++  scene.background = new THREE.Color(0x6b4a34);
+ 
+   // Straight-down orthographic camera. cam.scale is CSS pixels per world unit.
+   const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 1, 200);
+   const cam = { yaw: 0, dragYaw: 0, zoom: 1, zoomTarget: 1, pan: new THREE.Vector2(), scale: 40 };
+ 
+   // Lights: warm low sun, cool sky fill, and a candle-like glow over the stall.
+-  scene.add(new THREE.HemisphereLight(0xd7e0ff, 0x5a3d2b, 1.0));
+-  const sun = new THREE.DirectionalLight(0xffc27a, 2.5);
++  scene.add(new THREE.HemisphereLight(0xfff0d8, 0xb08860, 1.1));
++  const sun = new THREE.DirectionalLight(0xffc27a, 2.3);
+   sun.position.set(-9, 11, 7);
+   sun.castShadow = true;
+   sun.shadow.mapSize.set(2048, 2048);
+@@ -543,7 +613,7 @@ export function createWorld(canvas) {
+   const tex = {
+     brick: brickTexture(), paving: pavingTexture(), window: windowTexture(),
+     tarpA: stripeTexture('#c8322a', '#f4ead6'), tarpB: stripeTexture('#2456c9', '#f4ead6'),
+-    eyes: buddhaEyesTexture(), roof: roofTileTexture(),
++    eyes: buddhaEyesTexture(), roof: roofTileTexture(), dhaka: dhakaTexture(), queue: queueTexture(),
+     steam: glowTexture(255, 248, 235), fire: glowTexture(255, 130, 40),
+     gold: glowTexture(255, 200, 90), warm: glowTexture(255, 170, 80),
+     kitchen: kitchenTexture(), wood: woodFloorTexture(), road: roadTexture(), blob: blobTexture(),
+@@ -560,14 +630,18 @@ export function createWorld(canvas) {
+     gas: new THREE.MeshStandardMaterial({ color: 0xc0392b, roughness: 0.5, metalness: 0.2 }),
+     brass: new THREE.MeshStandardMaterial({ color: 0xc8962e, roughness: 0.35, metalness: 0.8 }),
+     gold: new THREE.MeshStandardMaterial({ color: 0xe7b44a, roughness: 0.3, metalness: 0.7 }),
+-    counterTop: new THREE.MeshStandardMaterial({ color: 0x8c5a2c, roughness: 0.6 }),
++    // Red-lacquered timber counter top, as in Newari shrines and doorways.
++    counterTop: new THREE.MeshStandardMaterial({ color: 0x8e2418, roughness: 0.35, metalness: 0.05 }),
++    trim: new THREE.MeshStandardMaterial({ color: 0xf6b93b, roughness: 0.35, metalness: 0.5 }),
++    dog: new THREE.MeshStandardMaterial({ color: 0xc27a3e, roughness: 0.9 }),
++    pigeon: new THREE.MeshStandardMaterial({ color: 0x8c93a0, roughness: 0.8 }),
+     window: new THREE.MeshStandardMaterial({ map: tex.window, roughness: 0.7 }),
+     eyesMat: new THREE.MeshStandardMaterial({ map: tex.eyes, roughness: 0.6 }),
+     tarpA: new THREE.MeshStandardMaterial({ map: tex.tarpA, side: THREE.DoubleSide, roughness: 0.9 }),
+     tarpB: new THREE.MeshStandardMaterial({ map: tex.tarpB, side: THREE.DoubleSide, roughness: 0.9 }),
+     ground: new THREE.MeshStandardMaterial({ map: tex.paving, roughness: 0.95 }),
+     hair: new THREE.MeshStandardMaterial({ color: 0x17110c, roughness: 0.9 }),
+-    topi: new THREE.MeshStandardMaterial({ color: 0x14110f, roughness: 0.8 }),
++    topi: new THREE.MeshStandardMaterial({ map: tex.dhaka, roughness: 0.8 }),
+     whiteCap: new THREE.MeshStandardMaterial({ color: 0xf5f3ec, roughness: 0.8 }),
+     apron: new THREE.MeshStandardMaterial({ color: 0xa3261f, roughness: 0.9 }),
+     lantern: new THREE.MeshBasicMaterial({ color: 0xffb35a }),
+@@ -783,6 +857,10 @@ export function createWorld(canvas) {
+   const planCur = { ...PLANS[0] };
+   let planTarget = PLANS[0];
+ 
++  // The shop sign of the current stage, so the HUD can keep badges off it.
++  let signMesh = null;
++  let frontBadgeZ = 0;
++
+   function buildStage(idx) {
+     disposeGroup(stageGroup);
+     stageGroup.clear();
+@@ -806,6 +884,14 @@ export function createWorld(canvas) {
+     for (const x of [-planX + 1.2, -planX / 2, planX / 2, planX - 1.2]) shrubPot(S, x, 8.2, mat);
+     shrubPot(S, -half - 2.0, 2.6, mat);
+     shrubPot(S, half + 2.0, 2.6, mat);
++    // Saffron queue mat: the waiting line gets its own colour, separate from the cobbles.
++    floorPatch(S, tex.queue, 0, 5.0, 9.0, 4.4, 2.2, 0.025);
++    // Richer street with each stage: more marigold pots at the lane edges.
++    const pots = [[[-planX + 0.8, 1.0], [planX - 0.8, 1.0]], [[-planX + 0.8, -3.5], [planX - 0.8, -3.5]], [[-planX + 0.8, -5.2], [-planX + 0.8, -1.6]]][idx];
++    for (const [x, z] of pots) shrubPot(S, x, z, mat);
++    // Ambient life, kept off the queue lane and the counter: a sleeping dog and a few pigeons.
++    addSleepingDog(S, planX - 2.2, 6.7, mat);
++    for (const [x, z] of [[-planX + 2.6, 6.9], [-planX + 2.9, 7.25], [-planX + 2.3, 7.35]]) addPigeon(S, x, z, mat);
+ 
+     if (idx === 0) {
+       // Brick house behind a tiled roof. Kitchen floor sits between wall and counter.
+@@ -880,6 +966,8 @@ export function createWorld(canvas) {
+     // Counter: brick body with a timber top.
+     mesh(new THREE.BoxGeometry(counterLen, COUNTER_H, counterDepth), mat.brick, 0, COUNTER_H / 2, 0, S);
+     mesh(new THREE.BoxGeometry(counterLen + 0.1, 0.08, counterDepth + 0.1), mat.counterTop, 0, COUNTER_H + 0.04, 0, S);
++    // Gold brass trim along the counter's front edge.
++    mesh(new THREE.BoxGeometry(counterLen + 0.12, 0.05, 0.06), mat.trim, 0, COUNTER_H + 0.01, counterDepth / 2 + 0.06, S, false);
+ 
+     // Canopy: four poles and a striped awning over the front edge of the counter.
+     // From overhead a full-width awning would hide the steamers, so the awning stops
+@@ -903,6 +991,9 @@ export function createWorld(canvas) {
+     sign.rotation.x = -Math.PI / 2;
+     sign.position.set(0, 3.23, (awnZ0 + awnZ1) / 2);
+     S.add(sign);
++    signMesh = sign;
++    // Front-row badges of a two-row counter hang just past the awning's far edge, clear of the sign.
++    frontBadgeZ = awnZ1 + 0.3;
+ 
+     // Street props: gas cylinder and a stack of steamer baskets.
+     mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.9, 14), mat.gas, half + 1.0, 0.45, 0.5, S);
+@@ -950,15 +1041,25 @@ export function createWorld(canvas) {
+     pants: [0x2b2b33, 0x3d3a4a, 0x4a3b2a, 0x1f3d4f],
+     skin: [0xc98a5c, 0xa86a43, 0xe4b18a, 0x8a5a3a],
+   };
++  // Looks that set a customer kind apart in the street (see sim.js CUSTOMER_KINDS).
++  const KIND_LOOKS = {
++    tourist: { hat: true, white: true, pack: 0xe2722a },
++    student: { hat: false, pack: 0x2e7d6b },
++  };
+ 
+   function spawnCustomer(c) {
+     const r = seededRandom(c.look + 13);
+     const pick = (a) => a[Math.floor(r() * a.length)];
++    // Tourists wear a white sun hat and an orange pack; students carry a teal pack.
++    // Locals keep the random Dhaka topi.
++    const kindLook = KIND_LOOKS[c.kind];
+     const h = makeHuman({
+       shirt: pick(CUSTOMER_LOOKS.shirts),
+       pants: pick(CUSTOMER_LOOKS.pants),
+       skin: pick(CUSTOMER_LOOKS.skin),
+-      topi: r() < 0.35,
++      topi: kindLook ? kindLook.hat : r() < 0.35,
++      white: !!kindLook?.white,
++      pack: kindLook?.pack,
+     }, mat);
+     h.root.userData.pick = { type: 'customer', id: c.id };
+     const blob = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 1.2), new THREE.MeshBasicMaterial({ map: tex.blob, transparent: true, depthWrite: false }));
+@@ -1274,16 +1375,36 @@ export function createWorld(canvas) {
+ 
+   // Seen from above, a badge must not cover its steamer's lid or momos, so it is
+   // anchored just outside the steamer. Badges go behind the steamer (above on screen,
+-  // into the open kitchen), except the front row of a two-row counter, which go in
+-  // front. `below` tells the DOM which side.
++  // into the open kitchen). The front row of a two-row counter goes past the awning
++  // instead (see frontBadgeZ), so it never lands on the shop sign. `below` tells the DOM which side.
+   function slotScreen(i) {
+     const sl = slots[i];
+     if (!sl || !sl.basket.visible) return null;
+     const back = sl.group.position.z <= 0;
+-    const p = new THREE.Vector3(sl.group.position.x, COUNTER_H, sl.group.position.z + (back ? -0.75 : 0.75));
++    const z = back ? sl.group.position.z - 0.75 : Math.max(frontBadgeZ, sl.group.position.z + 0.75);
++    const p = new THREE.Vector3(sl.group.position.x, COUNTER_H, z);
+     return { ...toScreen(p), below: !back };
+   }
+ 
++  // Screen boxes of scenery that steamer badges must not cover (the shop sign, which lies on the awning).
++  function occluders() {
++    if (!signMesh) return [];
++    signMesh.updateMatrixWorld(true);
++    const b = new THREE.Box3().setFromObject(signMesh);
++    const pts = [];
++    for (const x of [b.min.x, b.max.x]) {
++      for (const y of [b.min.y, b.max.y]) {
++        for (const z of [b.min.z, b.max.z]) pts.push(toScreen(new THREE.Vector3(x, y, z)));
++      }
++    }
++    return [{
++      l: Math.min(...pts.map((p) => p.x)),
++      r: Math.max(...pts.map((p) => p.x)),
++      t: Math.min(...pts.map((p) => p.y)),
++      b: Math.max(...pts.map((p) => p.y)),
++    }];
++  }
++
+   function pick(clientX, clientY, rect) {
+     ndc.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+     ndc.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+@@ -1302,7 +1423,7 @@ export function createWorld(canvas) {
+   return {
+     renderer, scene, camera,
+     setSize, setStage, syncSlots, handleEvent, update, render,
+-    customerScreen, slotScreen, pick, dragYaw, resetYaw, panBy, zoomBy, resetView,
++    customerScreen, slotScreen, occluders, pick, dragYaw, resetYaw, panBy, zoomBy, resetView,
+     get slotCount() { return slots.length; },
+     dispose() {
+       renderer.dispose();
+diff --git a/tests/features.mjs b/tests/features.mjs
+new file mode 100644
+index 0000000..dea3c62
+--- /dev/null
++++ b/tests/features.mjs
+@@ -0,0 +1,139 @@
++// Feature checks for festivals and customer kinds, run against the real sim.
++// Run with: node tests/features.mjs
++import assert from 'node:assert/strict';
++import * as sim from '../js/sim.js';
++import { CUSTOMER_KINDS, FESTIVALS, FESTIVAL_EVERY_SECONDS, FESTIVAL_SECONDS } from '../js/data.js';
++
++const DT = 0.1;
++const ticks = (secs) => Math.round(secs / DT);
++
++// Deterministic randomness so spawn counts are repeatable.
++let seed = 7;
++Math.random = () => {
++  seed = (seed * 16807) % 2147483647;
++  return seed / 2147483647;
++};
++
++let passed = 0;
++function check(name, fn) {
++  fn();
++  passed++;
++  console.log(`ok  ${name}`);
++}
++
++// Advance a game and keep the queue empty so every spawn counts as an arrival.
++function spawnsOver(s, secs) {
++  const before = s.nextId;
++  const ev = [];
++  for (let i = 0; i < ticks(secs); i++) {
++    s.queue = [];
++    sim.update(s, DT, ev);
++  }
++  return { spawns: s.nextId - before, ev };
++}
++
++check('festivals start on a fixed cadence and cycle through their names', () => {
++  const s = sim.newGame();
++  const ev = [];
++  const starts = [];
++  for (let i = 0; i < ticks(FESTIVAL_EVERY_SECONDS * 2 + 60); i++) {
++    ev.length = 0;
++    sim.update(s, DT, ev);
++    for (const e of ev) if (e.type === 'festival' && e.active) starts.push([e.name, s.time]);
++  }
++  assert.equal(starts.length, 2);
++  assert.equal(starts[0][0], FESTIVALS[0].name);
++  assert.equal(starts[1][0], FESTIVALS[1].name);
++  assert.ok(Math.abs(starts[0][1] - FESTIVAL_EVERY_SECONDS) < 0.5, 'first festival on schedule');
++  assert.ok(Math.abs(starts[1][1] - 2 * FESTIVAL_EVERY_SECONDS) < 0.5, 'second festival on schedule');
++});
++
++check('a festival ends after its rush and reports it', () => {
++  const s = sim.newGame();
++  const ev = [];
++  let ended = false;
++  for (let i = 0; i < ticks(FESTIVAL_EVERY_SECONDS + FESTIVAL_SECONDS + 5); i++) {
++    ev.length = 0;
++    sim.update(s, DT, ev);
++    if (ev.some((e) => e.type === 'festival' && !e.active)) ended = true;
++  }
++  assert.ok(ended, 'an end event should fire');
++  assert.equal(s.festival.left, 0);
++});
++
++check('a festival raises customer arrivals', () => {
++  const normal = sim.newGame();
++  normal.festival.next = 1e9; // no festival in this window
++  const normalSpawns = spawnsOver(normal, 60).spawns;
++
++  const rush = sim.newGame();
++  rush.festival.left = 1e9; // festival in progress for the whole window
++  const rushSpawns = spawnsOver(rush, 60).spawns;
++
++  assert.ok(rushSpawns > normalSpawns * 1.4, `rush ${rushSpawns} should beat normal ${normalSpawns}`);
++});
++
++check('customers are drawn from every kind and carry their kind', () => {
++  const s = sim.newGame();
++  s.stage = 2; // roomy queue
++  const kinds = new Set();
++  const ev = [];
++  for (let i = 0; i < ticks(600); i++) {
++    s.queue = [];
++    ev.length = 0;
++    sim.update(s, DT, ev);
++    for (const e of ev) if (e.type === 'arrived') kinds.add(e.kind);
++  }
++  for (const k of Object.keys(CUSTOMER_KINDS)) assert.ok(kinds.has(k), `${k} should appear`);
++});
++
++check('a student is more impatient than a local', () => {
++  const s = sim.newGame();
++  s.stage = 2;
++  let sawStudent = false;
++  let sawLocal = false;
++  for (let i = 0; i < 2000; i++) {
++    s.queue = [];
++    sim.update(s, DT, []);
++    for (const c of s.queue) {
++      if (c.kind === 'student') {
++        sawStudent = true;
++        assert.ok(c.maxPatience < 40, 'students wait less than the standard 40s');
++      }
++      if (c.kind === 'local') {
++        sawLocal = true;
++        assert.equal(c.maxPatience, 40);
++      }
++    }
++    if (sawStudent && sawLocal) break;
++  }
++  assert.ok(sawStudent && sawLocal);
++});
++
++check('a tourist tips more than a local for the same plate', () => {
++  const pay = (kind) => {
++    const s = sim.newGame();
++    s.money = 0;
++    s.stock.steamed = 1;
++    s.queue = [{ id: 1, name: 'T', kind, item: 'steamed', qty: 1, patience: 40, maxPatience: 40, look: 0 }];
++    const ev = [];
++    assert.equal(sim.serve(s, 1, ev), true);
++    return ev.find((e) => e.type === 'served').pay;
++  };
++  const tourist = pay('tourist');
++  const local = pay('local');
++  assert.ok(tourist > local, `tourist ${tourist} should beat local ${local}`);
++  // Locals get the standard 10% patience tip; tourists add their own 30% on top.
++  assert.equal(local, Math.round(30 * 1.1));
++  assert.equal(tourist, Math.round(30 * (1 + 0.1 + CUSTOMER_KINDS.tourist.tip)));
++});
++
++check('every kind has a weight, patience and tip', () => {
++  for (const [k, d] of Object.entries(CUSTOMER_KINDS)) {
++    assert.ok(d.weight > 0, `${k} weight`);
++    assert.ok(d.patience > 0, `${k} patience`);
++    assert.ok(d.tip >= 0, `${k} tip`);
++  }
++});
++
++console.log(`\n${passed} feature checks passed`);
+diff --git a/tests/progression.mjs b/tests/progression.mjs
+new file mode 100644
+index 0000000..93039e0
+--- /dev/null
++++ b/tests/progression.mjs
+@@ -0,0 +1,294 @@
++// Headless progression check: plays seeded games with a simple, human-like strategy
++// and reports game time to each milestone. Run with: node tests/progression.mjs
++// Options: --seeds N (default 24), --verbose (print every run).
++import * as sim from '../js/sim.js';
++import { ITEMS, ITEM_ORDER, UPGRADES, DECOR, STAFF, STAGES, CUSTOMER_KINDS } from '../js/data.js';
++
++const DT = 0.1; // same max step the game uses
++const ACTION_SECONDS = 1; // one tap or purchase per second, at most
++const CAP_SECONDS = 60 * 60; // a run that has not reached Busy Restaurant by now is a dead end
++const args = process.argv.slice(2);
++const SEEDS = Number(args[args.indexOf('--seeds') + 1]) || 24;
++const VERBOSE = args.includes('--verbose');
++
++// Targets from the design brief, in game seconds (medians across seeds).
++const TARGETS = {
++  firstUpgrade: { max: 60 },
++  firstHire: { max: 180 },
++  littleShop: { min: 480, max: 720 },
++  busyRestaurant: { min: 1500, max: 2400 },
++};
++
++// Everything the game can sell, priced with the sim's own cost functions. A player
++// who is still holding more cash than this at the cap has nothing left worth buying.
++function totalSinks() {
++  let total = 0;
++  for (const it of Object.values(ITEMS)) total += it.unlock;
++  for (const d of Object.values(DECOR)) total += d.cost;
++  for (const d of Object.values(STAFF)) total += d.hire * d.max;
++  for (const k of Object.keys(UPGRADES)) {
++    for (let lvl = 0; lvl < UPGRADES[k].max; lvl++) {
++      total += sim.upgradeCost({ upgrades: { [k]: lvl } }, k);
++    }
++  }
++  for (let b = 2; b < STAGES[STAGES.length - 1].maxBaskets; b++) total += sim.basketCost({ baskets: b });
++  for (const st of STAGES.slice(1)) total += st.cost;
++  return total;
++}
++
++// Seeded RNG so every run is repeatable. sim.js calls Math.random directly.
++function mulberry32(seed) {
++  let a = seed >>> 0;
++  return () => {
++    a = (a + 0x6d2b79f5) >>> 0;
++    let t = a;
++    t = Math.imul(t ^ (t >>> 15), t | 1);
++    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
++    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
++  };
++}
++
++// The player's purchase order. Each goal blocks until it is bought, so the player
++// saves for it rather than spending on later things. Expansions come before the
++// items that need them, so the plan never waits on a locked stage.
++const up = (key, level) => ({
++  done: (s) => s.upgrades[key] >= level,
++  act: (s) => sim.buyUpgrade(s, key),
++});
++const hire = (role, n) => ({
++  done: (s) => s.staff[role] >= n,
++  act: (s) => sim.hire(s, role),
++});
++const basket = (n) => ({
++  done: (s) => s.baskets >= n,
++  act: (s) => sim.buyBasket(s),
++});
++const unlock = (key) => ({
++  done: (s) => s.unlocked[key],
++  act: (s) => sim.unlockItem(s, key),
++});
++const decor = (key) => ({
++  done: (s) => s.decor[key],
++  act: (s) => sim.buyDecor(s, key),
++});
++const expand = (stage) => ({
++  done: (s) => s.stage >= stage,
++  act: (s) => sim.expand(s, null),
++});
++
++const PLAN = [
++  up('speed', 1),
++  hire('cook', 1),
++  up('batch', 1),
++  decor('flags'),
++  unlock('jhol'),
++  hire('waiter', 1),
++  up('recipe', 1),
++  basket(3),
++  expand(1),
++  up('speed', 3),
++  hire('cook', 2),
++  basket(4),
++  up('batch', 2),
++  decor('garland'),
++  unlock('cmomo'),
++  hire('waiter', 2),
++  up('recipe', 3),
++  basket(5),
++  decor('lanterns'),
++  unlock('fried'),
++  expand(2),
++  up('speed', 5),
++  up('batch', 3),
++  up('recipe', 6),
++  basket(6),
++  basket(7),
++  basket(8),
++  hire('waiter', 3),
++];
++
++// The unlocked momo with the most unmet queued demand, or null if nothing is wanted.
++function bestItem(s) {
++  let best = null;
++  let bestD = 0;
++  for (const k of ITEM_ORDER) {
++    if (!s.unlocked[k]) continue;
++    const d = sim.demand(s, k);
++    if (d > bestD) {
++      bestD = d;
++      best = k;
++    }
++  }
++  return best;
++}
++
++// One player action, in priority order: serve a customer, collect a ready steamer,
++// load an empty one, then buy the next plan item if it is affordable.
++function doOneAction(s, ev, plan, planIdx) {
++  for (const c of s.queue) {
++    if ((s.stock[c.item] || 0) >= c.qty) return sim.serve(s, c.id, ev);
++  }
++  for (let i = 0; i < s.baskets; i++) {
++    if (s.slots[i].state === 'ready') return sim.tapBasket(s, i, ev);
++  }
++  for (let i = 0; i < s.baskets; i++) {
++    if (s.slots[i].state === 'idle') {
++      const item = bestItem(s);
++      if (item) return sim.loadBasket(s, i, item);
++    }
++  }
++  let idx = planIdx;
++  while (idx < plan.length && plan[idx].done(s)) idx++;
++  return idx < plan.length && plan[idx].act(s);
++}
++
++function playOnce(seed) {
++  const prev = Math.random;
++  Math.random = mulberry32(seed);
++  try {
++    const s = sim.newGame();
++    const ev = [];
++    const m = {};
++    const mark = (key) => { if (m[key] === undefined) m[key] = s.time; };
++    let planIdx = 0;
++    let lastServed = 0;
++    let longestDry = 0;
++    let dryStart = 0;
++    const money = [];
++    let nextSample = 0;
++
++    let actionAcc = ACTION_SECONDS;
++    const kinds = { arrived: {}, served: {} };
++    let festivals = 0;
++
++    while (s.time < CAP_SECONDS) {
++      ev.length = 0;
++      sim.update(s, DT, ev);
++
++      // The player makes one tap or purchase per ACTION_SECONDS, so the opening
++      // is paced by human hands rather than by instant reactions.
++      actionAcc = Math.min(actionAcc + DT, ACTION_SECONDS);
++      if (actionAcc >= ACTION_SECONDS && doOneAction(s, ev, PLAN, planIdx)) {
++        actionAcc = 0;
++        while (planIdx < PLAN.length && PLAN[planIdx].done(s)) planIdx++;
++      }
++
++      for (const e of ev) {
++        if (e.type === 'arrived') kinds.arrived[e.kind] = (kinds.arrived[e.kind] || 0) + 1;
++        if (e.type === 'served') kinds.served[e.kind] = (kinds.served[e.kind] || 0) + e.qty;
++        if (e.type === 'festival' && e.active) festivals++;
++      }
++
++      if (s.served > lastServed) {
++        longestDry = Math.max(longestDry, s.time - dryStart);
++        dryStart = s.time;
++        lastServed = s.served;
++      }
++
++      if (s.upgrades.speed + s.upgrades.batch + s.upgrades.recipe > 0) mark('firstUpgrade');
++      if (s.staff.cook + s.staff.waiter > 0) mark('firstHire');
++      if (s.stage >= 1) mark('littleShop');
++      if (s.stage >= 2) mark('busyRestaurant');
++      if (Object.values(s.unlocked).every(Boolean)) mark('fullMenu');
++      if (planIdx >= PLAN.length) mark('planDone');
++      if (s.time >= nextSample) {
++        money.push({ t: s.time, money: s.money, earned: s.totalEarned });
++        nextSample += 300;
++      }
++    }
++    longestDry = Math.max(longestDry, s.time - dryStart);
++    return { seed, m, s, money, longestDry, kinds, festivals };
++  } finally {
++    Math.random = prev;
++  }
++}
++
++const fmt = (sec) => (sec === undefined ? '  never' : `${(sec / 60).toFixed(1).padStart(5)} min`);
++const median = (xs) => {
++  const v = xs.filter((x) => x !== undefined).sort((a, b) => a - b);
++  if (!v.length) return undefined;
++  const mid = Math.floor(v.length / 2);
++  return v.length % 2 ? v[mid] : (v[mid - 1] + v[mid]) / 2;
++};
++
++const runs = [];
++for (let seed = 1; seed <= SEEDS; seed++) runs.push(playOnce(seed));
++
++const KEYS = ['firstUpgrade', 'firstHire', 'littleShop', 'busyRestaurant', 'fullMenu', 'planDone'];
++const LABELS = {
++  firstUpgrade: 'First upgrade',
++  firstHire: 'First hire',
++  littleShop: 'Little Shop',
++  busyRestaurant: 'Busy Restaurant',
++  fullMenu: 'Full menu',
++  planDone: 'Whole purchase plan',
++};
++
++console.log(`Progression over ${SEEDS} seeded runs (game time, cap ${CAP_SECONDS / 60} min)\n`);
++console.log('Milestone            median        min        max    reached');
++const medians = {};
++for (const k of KEYS) {
++  const xs = runs.map((r) => r.m[k]).filter((x) => x !== undefined);
++  medians[k] = median(xs);
++  const lo = xs.length ? Math.min(...xs) : undefined;
++  const hi = xs.length ? Math.max(...xs) : undefined;
++  console.log(
++    `${LABELS[k].padEnd(20)} ${fmt(medians[k])}  ${fmt(lo)}  ${fmt(hi)}   ${xs.length}/${SEEDS}`,
++  );
++}
++
++const dead = runs.filter((r) => r.m.busyRestaurant === undefined).length;
++const longestDry = Math.max(...runs.map((r) => r.longestDry));
++const endMoney = runs.map((r) => r.s.money);
++const endEarned = runs.map((r) => r.s.totalEarned);
++const sinks = totalSinks();
++const festivalsPerRun = runs.map((r) => r.festivals);
++const arrivals = {};
++const served = {};
++for (const r of runs) {
++  for (const [k, n] of Object.entries(r.kinds.arrived)) arrivals[k] = (arrivals[k] || 0) + n;
++  for (const [k, n] of Object.entries(r.kinds.served)) served[k] = (served[k] || 0) + n;
++}
++const totalArrivals = Object.values(arrivals).reduce((a, b) => a + b, 0);
++console.log(`\nDead-end runs (no Busy Restaurant by cap): ${dead}`);
++console.log(`Longest gap with no sales: ${longestDry.toFixed(0)}s`);
++console.log(`Money at cap (median / max): Rs ${Math.round(median(endMoney))} / Rs ${Math.max(...endMoney)}`);
++console.log(`Total price of everything buyable: Rs ${sinks}`);
++console.log(`Earned by cap (median): Rs ${Math.round(median(endEarned))}`);
++console.log(`Festivals per run: ${festivalsPerRun.join(', ')}`);
++console.log('Customer kinds (share of arrivals, share of momos served):');
++for (const k of Object.keys(CUSTOMER_KINDS)) {
++  const arr = ((arrivals[k] || 0) / totalArrivals * 100).toFixed(0);
++  const srv = ((served[k] || 0) / Object.values(served).reduce((a, b) => a + b, 0) * 100).toFixed(0);
++  console.log(`  ${CUSTOMER_KINDS[k].name.padEnd(8)} ${arr.padStart(3)}%   ${srv.padStart(3)}%`);
++}
++
++if (VERBOSE) {
++  for (const r of runs) {
++    console.log(`\nseed ${r.seed}: served ${r.s.served}, lost ${r.s.lost}, rep ${r.s.rep.toFixed(0)}, stage ${r.s.stage}`);
++    for (const p of r.money) console.log(`  t=${(p.t / 60).toFixed(0)}m money Rs ${Math.round(p.money)} earned Rs ${Math.round(p.earned)}`);
++  }
++}
++
++// Checks: printed above; a failing target exits non-zero so the test can gate changes.
++const failures = [];
++for (const [k, t] of Object.entries(TARGETS)) {
++  const v = medians[k];
++  if (v === undefined) failures.push(`${k}: never reached`);
++  else if (t.min !== undefined && v < t.min) failures.push(`${k}: ${(v / 60).toFixed(1)} min is under ${t.min / 60} min`);
++  else if (t.max !== undefined && v > t.max) failures.push(`${k}: ${(v / 60).toFixed(1)} min is over ${t.max / 60} min`);
++}
++if (dead) failures.push(`${dead} dead-end runs`);
++if (longestDry > 240) failures.push(`a ${longestDry.toFixed(0)}s gap with no sales`);
++// No runaway: nobody should sit on more cash at the cap than the whole game costs.
++if (Math.max(...endMoney) > sinks) failures.push(`money ${Math.max(...endMoney)} is above the Rs ${sinks} of purchases`);
++if (festivalsPerRun.some((n) => n < 6)) failures.push('a run had fewer than six festivals');
++
++console.log('');
++if (failures.length) {
++  console.log('FAIL');
++  for (const f of failures) console.log(`  - ${f}`);
++  process.exitCode = 1;
++} else {
++  console.log('PASS');
++}
+diff --git a/tests/saves.mjs b/tests/saves.mjs
+new file mode 100644
+index 0000000..cb1858d
+--- /dev/null
++++ b/tests/saves.mjs
+@@ -0,0 +1,120 @@
++// Save compatibility: saves written before festivals and customer kinds existed must
++// still load, get sane defaults for the new state, and keep playing.
++// Run with: node tests/saves.mjs
++import assert from 'node:assert/strict';
++import * as sim from '../js/sim.js';
++
++// Minimal localStorage stand-in for Node.
++const store = new Map();
++globalThis.localStorage = {
++  getItem: (k) => (store.has(k) ? store.get(k) : null),
++  setItem: (k, v) => store.set(k, String(v)),
++  removeItem: (k) => store.delete(k),
++};
++
++// A save as the game wrote it before this change: no festival field.
++const OLD_SAVE = {
++  v: 1,
++  money: 1234,
++  totalEarned: 5000,
++  served: 80,
++  lost: 3,
++  rep: 52,
++  stage: 1,
++  baskets: 4,
++  slots: [
++    { state: 'cooking', item: 'steamed', left: 4, total: 8, count: 4 },
++    { state: 'idle', item: null, left: 0, total: 0, count: 0 },
++  ],
++  upgrades: { speed: 2, batch: 1, recipe: 0 },
++  unlocked: { steamed: true, jhol: true, cmomo: false, fried: false },
++  decor: { flags: true, garland: false, lanterns: false },
++  staff: { cook: 1, waiter: 0 },
++  stock: { steamed: 6, jhol: 0, cmomo: 0, fried: 0 },
++  cookChoice: 'steamed',
++  queue: [{ id: 9, name: 'Sita', item: 'steamed', qty: 1, patience: 20, maxPatience: 40 }],
++  nextId: 40,
++  spawnIn: 2,
++  payIn: 30,
++  cookAcc: 0,
++  waiterAcc: 0,
++  time: 900,
++  achievements: ['first', 'shop'],
++};
++
++function roundTrip(data) {
++  store.set(sim.SAVE_KEY, JSON.stringify(data));
++  return sim.loadGame();
++}
++
++let passed = 0;
++function check(name, fn) {
++  fn();
++  passed++;
++  console.log(`ok  ${name}`);
++}
++
++check('an old save loads and keeps its progress', () => {
++  const s = roundTrip(OLD_SAVE);
++  assert.ok(s, 'old save should load');
++  assert.equal(s.money, 1234);
++  assert.equal(s.stage, 1);
++  assert.equal(s.upgrades.speed, 2);
++  assert.equal(s.staff.cook, 1);
++  assert.deepEqual(s.achievements, ['first', 'shop']);
++  assert.deepEqual(s.queue, [], 'queue is rebuilt, not restored');
++});
++
++check('an old save gets default festival state', () => {
++  const s = roundTrip(OLD_SAVE);
++  assert.equal(s.festival.left, 0);
++  assert.equal(s.festival.count, 0);
++  assert.equal(s.festival.name, null);
++  assert.equal(s.festival.next, 480);
++});
++
++check('an old save keeps playing, including the first festival', () => {
++  const s = roundTrip(OLD_SAVE);
++  const ev = [];
++  for (let i = 0; i < 6000; i++) sim.update(s, 0.1, ev); // 600 s of play
++  assert.ok(ev.some((e) => e.type === 'festival' && e.active), 'a festival should start');
++  assert.ok(s.money >= 0 && Number.isFinite(s.money));
++});
++
++check('corrupt festival fields are repaired, not trusted', () => {
++  const s = roundTrip({ ...OLD_SAVE, festival: { next: 'soon', left: -5, count: 'two', name: 7 } });
++  assert.equal(s.festival.next, 480);
++  assert.equal(s.festival.left, 0);
++  assert.equal(s.festival.count, 0);
++  assert.equal(s.festival.name, null);
++});
++
++check('out-of-range festival timers are clamped to their schedule', () => {
++  const s = roundTrip({ ...OLD_SAVE, festival: { next: -1e9, left: 1e9, count: 3, name: 'Tihar' } });
++  assert.equal(s.festival.next, 0);
++  assert.equal(s.festival.left, 90);
++  assert.equal(s.festival.count, 3);
++  assert.equal(s.festival.name, 'Tihar');
++});
++
++check('a festival save round-trips through saveGame and loadGame', () => {
++  const g = sim.newGame();
++  const ev = [];
++  for (let i = 0; i < 5000; i++) sim.update(g, 0.1, ev); // 500 s: inside the first festival
++  assert.ok(g.festival.left > 0, 'should be mid-festival');
++  sim.saveGame(g);
++  const back = sim.loadGame();
++  assert.deepEqual(back.festival, g.festival);
++  assert.equal(back.money, g.money);
++});
++
++check('a save from a different version is still refused', () => {
++  assert.equal(roundTrip({ ...OLD_SAVE, v: 2 }), null);
++});
++
++check('loading garbage returns null rather than throwing', () => {
++  store.set(sim.SAVE_KEY, '{not json');
++  assert.equal(sim.loadGame(), null);
++});
++
++console.log(`\n${passed} save checks passed`);
