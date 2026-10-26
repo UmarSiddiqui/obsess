@@ -1,0 +1,14 @@
+diff --git a/src/toolbar.css b/src/toolbar.css
+index 8d125fd..1c87d0a 100644
+--- a/src/toolbar.css
++++ b/src/toolbar.css
+@@ -7,6 +7,9 @@
+ 
+ .search, .filter { height: 40px; min-width: 0; padding: 0 8px; font-size: 16px; }
+ 
++/* Own row, so the button is never squeezed into a narrow grid column. */
++.toolbar .actions { grid-column: 1 / -1; display: flex; justify-content: flex-end; }
++
+ @media (max-width: 480px) {
+   .toolbar { grid-template-columns: 1fr 88px 104px; }
+ }

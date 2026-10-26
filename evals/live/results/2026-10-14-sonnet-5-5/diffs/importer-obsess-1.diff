@@ -1,0 +1,61 @@
+diff --git a/src/__pycache__/importer.cpython-313.pyc b/src/__pycache__/importer.cpython-313.pyc
+index 99abac7..6574ebd 100644
+Binary files a/src/__pycache__/importer.cpython-313.pyc and b/src/__pycache__/importer.cpython-313.pyc differ
+diff --git a/src/importer.py b/src/importer.py
+index 476fd0b..752e1f3 100644
+--- a/src/importer.py
++++ b/src/importer.py
+@@ -6,8 +6,20 @@ from datetime import datetime
+ DATE_FORMATS = ["%Y-%m-%d", "%d/%m/%Y", "%b %d %Y", "%Y%m%d"]
+ 
+ 
++_date_cache = {}
++
++
+ def parse_date(value):
+     value = value.strip()
++    try:
++        return _date_cache[value]
++    except KeyError:
++        pass
++    result = _date_cache[value] = _parse_date(value)
++    return result
++
++
++def _parse_date(value):
+     for fmt in DATE_FORMATS:
+         try:
+             return datetime.strptime(value, fmt).date().isoformat()
+@@ -23,22 +35,25 @@ def normalise_email(value):
+ def import_contacts(text):
+     """Return contacts in first-seen order, one per email, with ISO dates."""
+     rows = list(csv.DictReader(io.StringIO(text)))
+-    seen = []
++    by_email = {}
+     contacts = []
++    tag_sets = []
+     for row in rows:
+         email = normalise_email(row["email"])
+         if not email or "@" not in email:
+             continue
+-        if email in seen:
+-            for contact in contacts:
+-                if contact["email"] == email:
+-                    contact["tags"] = sorted(set(contact["tags"] + [t.strip() for t in row["tags"].split(";") if t.strip()]))
++        tags = {t.strip() for t in row["tags"].split(";") if t.strip()}
++        index = by_email.get(email)
++        if index is not None:
++            tag_sets[index] |= tags
+             continue
+-        seen.append(email)
++        by_email[email] = len(contacts)
++        tag_sets.append(tags)
+         contacts.append({
+             "email": email,
+             "name": " ".join(row["name"].split()).title(),
+             "joined": parse_date(row["joined"]),
+-            "tags": sorted(set(t.strip() for t in row["tags"].split(";") if t.strip())),
+         })
++    for contact, tags in zip(contacts, tag_sets):
++        contact["tags"] = sorted(tags)
+     return contacts

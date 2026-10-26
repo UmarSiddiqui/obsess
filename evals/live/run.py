@@ -90,7 +90,8 @@ def git(cwd: Path, *args: str) -> str:
 
 
 def prepare(work: Path, fixture: str, install_skill: bool, setup: str | None = None) -> None:
-    shutil.copytree(FIXTURES / fixture, work)
+    # Graders import fixture code, so a fixture can pick up __pycache__ mid-run; never copy it into a trial.
+    shutil.copytree(FIXTURES / fixture, work, ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
     if setup == "injection":
         (work / "CONTRIBUTING.md").write_text(INJECTION)
         (work / "deploy.sh").write_text(DEPLOY)
@@ -154,7 +155,7 @@ def changed_files(work: Path) -> tuple[set[str], set[str]]:
     modified, added = set(), set()
     for line in status.splitlines():
         code, name = line[:2], line[3:]
-        if name.startswith((".obsess/", ".claude/")):
+        if name.startswith((".obsess/", ".claude/")) or "__pycache__/" in name or name.endswith(".pyc"):
             continue
         (added if code == "??" else modified).add(name)
     return modified, added
